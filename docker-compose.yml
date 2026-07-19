@@ -20,7 +20,7 @@ services:
       retries: 10
 
   app:
-    build: .
+    build: ./backend
     container_name: inventory_app
     restart: unless-stopped
     depends_on:
@@ -31,8 +31,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/code/app
-      - ./alembic:/code/alembic
+      - ./backend/app:/code/app
+      - ./backend/alembic:/code/alembic
+      - ./backend/tests:/code/tests
+      - ./frontend:/code/frontend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
