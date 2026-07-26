@@ -1,0 +1,76 @@
+{
+  "name": "basicTelegramTrigger",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -384,
+        -112
+      ],
+      "id": "3f6021d5-9a21-4a48-8699-81b0a493eeef",
+      "name": "Telegram Trigger",
+      "webhookId": "d441b42a-b5eb-41fe-9f19-6f4f4dd48a28",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        -112
+      ],
+      "id": "9927e78f-8f03-4881-802d-68454267ed78",
+      "name": "Get a chat",
+      "webhookId": "fac3175d-f49b-47b8-af84-8e1ac827686e",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bc8c9ba3-2bf2-4f6e-9e5d-627d2d575737",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6474717bfa8d7840328ea2cb1aee49b5c71f4d987d0fcf170fb85b9b043d93f1"
+  },
+  "nodeGroups": [],
+  "id": "kZvDcC2S0qxxY5pd",
+  "tags": []
+}
