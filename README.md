@@ -26,6 +26,10 @@ Interactive docs: http://localhost:8000/docs
 
 The first time you start it, create the tables (see "Migrations" below).
 
+For telegram bot to work you have to use cloudflared tunnel.
+
+And set Webhook url and n8n host url in env file.
+
 ## Quick start (local, no Docker)
 
 ```bash

@@ -1,7 +1,5 @@
-version: "3.9"
-
 services:
-  db:
+  postgres:
     image: postgres:16-alpine
     container_name: inventory_postgres
     restart: unless-stopped
@@ -24,10 +22,10 @@ services:
     container_name: inventory_app
     restart: unless-stopped
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://inventory:inventory@db:5432/inventory_db
+      DATABASE_URL: postgresql+psycopg2://inventory:inventory@postgres:5432/inventory_db
     ports:
       - "8000:8000"
     volumes:
@@ -37,5 +35,35 @@ services:
       - ./frontend:/code/frontend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      GENERIC_TIMEZONE: "Asia/Kolkata"
+      TZ: "Asia/Kolkata"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      # WEBHOOK_URL: ${WEBHOOK_URL}
+      # N8N_HOST: ${N8N_HOST}
+      # N8N_PROTOCOL: https
+      # N8N_TUNNEL_ENABLED: "true"
+      # N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: inventory_db
+      DB_POSTGRESDB_USER: inventory
+      DB_POSTGRESDB_PASSWORD: inventory
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  n8n_data:
