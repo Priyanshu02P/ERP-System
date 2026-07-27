@@ -26,3 +26,4 @@ class LocationCategory(str, enum.Enum):
     STANDARD = "STANDARD"  # Normal WHx-Rack-Shelf-Bin hierarchy
     SHEET = "SHEET"        # Oversized flat stock, stored at warehouse+rack level only
     PIPE = "PIPE"          # Oversized pipe stock, stored at warehouse+rack level only
+    SCRAP = "SCRAP"        # Scrap / rejected-goods yard, stored at warehouse+rack level only

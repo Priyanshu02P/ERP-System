@@ -28,8 +28,19 @@ class InventoryRepository(BaseRepository[Inventory]):
         return self.db.query(Inventory).filter(Inventory.manufacturer_id == manufacturer_id).all()
 
     def get_available_stock(self, product_id: int) -> float:
+        """
+        Sums (quantity - reserved) across only the OK-status rows for this
+        product. Non-OK rows (HLD, DMG, RJC, MIS, RET) are excluded - stock
+        on hold, damaged, rejected, missing, or returned is not available
+        for reservation/issue even though it's still physically on hand
+        (see get_total_stock for the raw physical total across all statuses).
+        """
         rows = self.get_by_product(product_id)
-        return sum(float(r.quantity) - float(r.reserved_quantity) for r in rows)
+        return sum(
+            float(r.quantity) - float(r.reserved_quantity)
+            for r in rows
+            if r.status == InventoryStatus.OK
+        )
 
     def get_total_stock(self, product_id: int) -> float:
         total = (

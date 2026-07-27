@@ -22,10 +22,13 @@ class LocationService(BaseService[Location]):
         specified without its rack - e.g. "WH3-03" is not a valid location).
       - A bin must belong to the given shelf.
       - Oversized items may stop at the rack level (e.g. "WH1-A").
-      - SHEET / PIPE categories are dedicated oversized-item zones and are
-        always expressed at the warehouse + rack level, rendered as
-        "SHEET-A" / "PIPE-A" rather than the standard "WH1-A" form.
+      - SHEET / PIPE / SCRAP categories are dedicated rack-level-only zones
+        and are always expressed at the warehouse + rack level, rendered as
+        "SHEET-A" / "PIPE-A" / "SCRAP-A" rather than the standard "WH1-A" form.
     """
+
+    # Categories that are always expressed at the warehouse + rack level only
+    RACK_LEVEL_CATEGORIES = (LocationCategory.SHEET, LocationCategory.PIPE, LocationCategory.SCRAP)
 
     def __init__(self, db: Session):
         self.repository: LocationRepository = LocationRepository(db)
@@ -68,7 +71,7 @@ class LocationService(BaseService[Location]):
             if bin_.shelf_id != data.shelf_id:
                 raise ValidationError("Bin does not belong to the given shelf")
 
-        if data.category in (LocationCategory.SHEET, LocationCategory.PIPE) and rack is None:
+        if data.category in self.RACK_LEVEL_CATEGORIES and rack is None:
             raise ValidationError(f"{data.category.value} locations require at least a rack")
 
     def get_location_path(self, data: LocationCreate) -> str:
@@ -78,7 +81,7 @@ class LocationService(BaseService[Location]):
         shelf = self.shelf_repository.get(data.shelf_id) if data.shelf_id else None
         bin_ = self.bin_repository.get(data.bin_id) if data.bin_id else None
 
-        if data.category in (LocationCategory.SHEET, LocationCategory.PIPE):
+        if data.category in self.RACK_LEVEL_CATEGORIES:
             return f"{data.category.value}-{rack.code}"
 
         parts = [warehouse.code]

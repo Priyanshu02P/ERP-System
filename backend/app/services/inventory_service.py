@@ -12,6 +12,7 @@ from app.db.repositories.location_repository import LocationRepository
 from app.db.schemas.inventory import InventoryCreate, InventoryUpdate
 from app.services.base_service import BaseService
 from app.services.exceptions import ValidationError
+from app.core.transaction_logger import log_transaction, TransactionAction
 
 
 class InventoryService(BaseService[Inventory]):
@@ -71,7 +72,21 @@ class InventoryService(BaseService[Inventory]):
     def create_inventory(self, data: InventoryCreate) -> Inventory:
         self.validate_inventory(data)
         inventory = Inventory(**data.model_dump())
-        return self.repository.create(inventory)
+        inventory = self.repository.create(inventory)
+        log_transaction(
+            TransactionAction.RECEIVE,
+            "Inventory",
+            inventory.id,
+            {
+                "product_id": inventory.product_id,
+                "manufacturer_id": inventory.manufacturer_id,
+                "location_id": inventory.location_id,
+                "batch_number": inventory.batch_number,
+                "quantity": float(inventory.quantity),
+                "status": inventory.status.value,
+            },
+        )
+        return inventory
 
     def update_inventory(self, inventory_id: int, data: InventoryUpdate) -> Inventory:
         inventory = self.get(inventory_id)
@@ -88,7 +103,14 @@ class InventoryService(BaseService[Inventory]):
 
     def delete_inventory(self, inventory_id: int) -> None:
         inventory = self.get(inventory_id)
+        details = {
+            "product_id": inventory.product_id,
+            "batch_number": inventory.batch_number,
+            "quantity": float(inventory.quantity),
+            "status": inventory.status.value,
+        }
         self.repository.delete(inventory)
+        log_transaction(TransactionAction.DELETE, "Inventory", inventory_id, details)
 
     # ---------- stock movement operations ----------
 
@@ -102,8 +124,21 @@ class InventoryService(BaseService[Inventory]):
         self.validate_quantity(quantity)
         if quantity > inventory.available_quantity:
             raise ValidationError("Cannot issue more than the available (unreserved) quantity")
-        inventory.quantity = float(inventory.quantity) - quantity
-        return self.repository.update(inventory)
+        quantity_before = float(inventory.quantity)
+        inventory.quantity = quantity_before - quantity
+        inventory = self.repository.update(inventory)
+        log_transaction(
+            TransactionAction.ISSUE,
+            "Inventory",
+            inventory.id,
+            {
+                "product_id": inventory.product_id,
+                "quantity_issued": quantity,
+                "quantity_before": quantity_before,
+                "quantity_after": float(inventory.quantity),
+            },
+        )
+        return inventory
 
     def move_stock(self, inventory_id: int, new_location_id: int) -> Inventory:
         return self.change_location(inventory_id, new_location_id)
@@ -113,31 +148,74 @@ class InventoryService(BaseService[Inventory]):
         self.validate_quantity(quantity)
         if quantity > inventory.available_quantity:
             raise ValidationError("Cannot reserve more than the available quantity")
-        return self.repository.reserve_stock(inventory, quantity)
+        inventory = self.repository.reserve_stock(inventory, quantity)
+        log_transaction(
+            TransactionAction.RESERVE,
+            "Inventory",
+            inventory.id,
+            {"product_id": inventory.product_id, "quantity_reserved": quantity,
+             "reserved_quantity_after": float(inventory.reserved_quantity)},
+        )
+        return inventory
 
     def release_stock(self, inventory_id: int, quantity: float) -> Inventory:
         inventory = self.get(inventory_id)
         self.validate_quantity(quantity)
-        return self.repository.release_stock(inventory, quantity)
+        inventory = self.repository.release_stock(inventory, quantity)
+        log_transaction(
+            TransactionAction.RELEASE,
+            "Inventory",
+            inventory.id,
+            {"product_id": inventory.product_id, "quantity_released": quantity,
+             "reserved_quantity_after": float(inventory.reserved_quantity)},
+        )
+        return inventory
 
     def change_status(self, inventory_id: int, status: InventoryStatus) -> Inventory:
         inventory = self.get(inventory_id)
-        return self.repository.update_status(inventory, status)
+        status_before = inventory.status.value
+        inventory = self.repository.update_status(inventory, status)
+        log_transaction(
+            TransactionAction.STATUS_CHANGE,
+            "Inventory",
+            inventory.id,
+            {"product_id": inventory.product_id, "status_before": status_before,
+             "status_after": inventory.status.value},
+        )
+        return inventory
 
     def change_location(self, inventory_id: int, new_location_id: int) -> Inventory:
         inventory = self.get(inventory_id)
         self.validate_location(new_location_id)
-        return self.repository.move_location(inventory, new_location_id)
+        location_before = inventory.location_id
+        inventory = self.repository.move_location(inventory, new_location_id)
+        log_transaction(
+            TransactionAction.MOVE,
+            "Inventory",
+            inventory.id,
+            {"product_id": inventory.product_id, "location_before": location_before,
+             "location_after": inventory.location_id},
+        )
+        return inventory
 
     def adjust_quantity(self, inventory_id: int, quantity_delta: float) -> Inventory:
         """Positive delta adds stock (e.g. stock-take correction upward), negative deducts."""
         inventory = self.get(inventory_id)
-        new_quantity = float(inventory.quantity) + quantity_delta
+        quantity_before = float(inventory.quantity)
+        new_quantity = quantity_before + quantity_delta
         if new_quantity < 0:
             raise ValidationError("Adjustment would result in negative quantity")
         if new_quantity < float(inventory.reserved_quantity):
             raise ValidationError("Adjustment would leave quantity below the reserved amount")
-        return self.repository.update_quantity(inventory, new_quantity)
+        inventory = self.repository.update_quantity(inventory, new_quantity)
+        log_transaction(
+            TransactionAction.ADJUST,
+            "Inventory",
+            inventory.id,
+            {"product_id": inventory.product_id, "quantity_delta": quantity_delta,
+             "quantity_before": quantity_before, "quantity_after": float(inventory.quantity)},
+        )
+        return inventory
 
     # ---------- reads ----------
 

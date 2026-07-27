@@ -22,6 +22,7 @@ class Product(Base, IDMixin, TimestampMixin, ActiveMixin):
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     product_type: Mapped[ProductType] = mapped_column(SAEnum(ProductType, name="product_type"), nullable=False)
     part_number: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), nullable=False)
     unit: Mapped["Unit"] = relationship(back_populates="products")

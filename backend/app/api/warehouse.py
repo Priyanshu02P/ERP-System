@@ -110,6 +110,15 @@ def create_location(payload: LocationCreate, db: Session = Depends(get_db)):
     return LocationService(db).create_location(payload)
 
 
+@router.get("/locations", response_model=List[LocationRead])
+def list_locations(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
+    return LocationService(db).get_page(skip=skip, limit=limit)
+
+
 @router.get("/locations/{location_id}", response_model=LocationRead)
 def get_location(location_id: int, db: Session = Depends(get_db)):
     return LocationService(db).get(location_id)

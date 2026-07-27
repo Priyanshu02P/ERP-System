@@ -28,7 +28,7 @@ def test_seed_synthetic_data(db_session, client):
     
     # Verify counts in DB
     assert db_session.query(Product).count() == 7
-    assert db_session.query(Inventory).count() == 8
+    assert db_session.query(Inventory).count() == 9
     
     # Re-running seed without clean should skip
     response = client.post("/api/v1/search/seed")

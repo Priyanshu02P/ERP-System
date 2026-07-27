@@ -1,5 +1,24 @@
+"""
+Seeds the database from the bundled `app/data/seed_data.json` fixture.
+
+The fixture is a plain, human-editable JSON file describing units,
+manufacturers, products, the warehouse/rack/shelf/bin/location hierarchy,
+and inventory records. This keeps the "what data do we start with" concern
+out of Python code entirely - to change the seed data, edit the JSON file.
+
+Cross-references inside the JSON are by human-readable code (e.g. a rack
+references its warehouse by `warehouse_code`, an inventory record
+references its product by `product_code`) rather than by database id,
+since ids aren't known until rows are inserted.
+"""
+
+import json
 from datetime import date, timedelta
+from pathlib import Path
+from typing import Any
+
 from sqlalchemy.orm import Session
+
 from app.db.models.unit import Unit
 from app.db.models.manufacturer import Manufacturer
 from app.db.models.product import Product
@@ -10,6 +29,15 @@ from app.db.models.bin import Bin
 from app.db.models.location import Location
 from app.db.models.inventory import Inventory
 from app.db.models.enums import ProductType, InventoryStatus, LocationCategory
+from app.core.transaction_logger import log_transaction, TransactionAction
+
+SEED_DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "seed_data.json"
+
+
+def _load_seed_data() -> dict[str, Any]:
+    with open(SEED_DATA_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 def seed_synthetic_data(db: Session, clean: bool = False) -> dict:
     if clean:
@@ -29,151 +57,159 @@ def seed_synthetic_data(db: Session, clean: bool = False) -> dict:
     if db.query(Product).first() is not None:
         return {"status": "skipped", "message": "Database already contains product records. Use clean=true to re-seed."}
 
-    # 1. Seed Units
-    pcs = Unit(code="PCS", name="Pieces", description="Individual items", is_active=True)
-    kg = Unit(code="KG", name="Kilograms", description="Weight measurement", is_active=True)
-    mtr = Unit(code="MTR", name="Meters", description="Length measurement", is_active=True)
-    lit = Unit(code="LIT", name="Liters", description="Volume measurement", is_active=True)
-    db.add_all([pcs, kg, mtr, lit])
+    data = _load_seed_data()
+
+    # ---------- 1. Units ----------
+    units_by_code: dict[str, Unit] = {}
+    for u in data.get("units", []):
+        unit = Unit(code=u["code"], name=u["name"], description=u.get("description"), is_active=u.get("is_active", True))
+        db.add(unit)
+        units_by_code[u["code"]] = unit
     db.commit()
+    for unit in units_by_code.values():
+        db.refresh(unit)
 
-    # Refresh to get IDs
-    db.refresh(pcs)
-    db.refresh(kg)
-    db.refresh(mtr)
-    db.refresh(lit)
-
-    # 2. Seed Manufacturers
-    mfg1 = Manufacturer(code="MFG-001", name="Apex Industries", address="123 Industrial Parkway", contact_info="sales@apex.com", is_active=True)
-    mfg2 = Manufacturer(code="MFG-002", name="Global Tech Parts", address="456 Tech Blvd", contact_info="support@globaltech.com", is_active=True)
-    mfg3 = Manufacturer(code="MFG-003", name="Eco Materials Corp", address="789 Green Rd", contact_info="info@ecomaterials.com", is_active=True)
-    db.add_all([mfg1, mfg2, mfg3])
+    # ---------- 2. Manufacturers ----------
+    manufacturers_by_code: dict[str, Manufacturer] = {}
+    for m in data.get("manufacturers", []):
+        mfg = Manufacturer(
+            code=m["code"], name=m["name"], address=m.get("address"),
+            contact_info=m.get("contact_info"), is_active=m.get("is_active", True),
+        )
+        db.add(mfg)
+        manufacturers_by_code[m["code"]] = mfg
     db.commit()
+    for mfg in manufacturers_by_code.values():
+        db.refresh(mfg)
 
-    db.refresh(mfg1)
-    db.refresh(mfg2)
-    db.refresh(mfg3)
-
-    # 3. Seed Products
-    # RAW
-    p1 = Product(code="PROD-001", name="Steel Rod 10mm", description="High-tensile structural steel rod", product_type=ProductType.RAW, part_number="SR-10", unit_id=mtr.id, is_active=True)
-    p2 = Product(code="PROD-002", name="Copper Wire 2mm", description="Conductive copper wiring", product_type=ProductType.RAW, part_number="CW-02", unit_id=mtr.id, is_active=True)
-    p7 = Product(code="PROD-007", name="Hydraulic Fluid", description="Premium ISO 46 hydraulic oil", product_type=ProductType.RAW, part_number="HF-46", unit_id=lit.id, is_active=True)
-    # WIP
-    p3 = Product(code="PROD-003", name="Sub-assembly Alpha", description="Pre-wired mechanical sub-assembly", product_type=ProductType.WIP, part_number="SA-ALPHA", unit_id=pcs.id, is_active=True)
-    p4 = Product(code="PROD-004", name="Control Board v2", description="Microcontroller logic board", product_type=ProductType.WIP, part_number="CB-V2", unit_id=pcs.id, is_active=True)
-    # FG
-    p5 = Product(code="PROD-005", name="Industrial Widget", description="Complete heavy duty widget assembly", product_type=ProductType.FG, part_number="IW-5000", unit_id=pcs.id, is_active=True)
-    p6 = Product(code="PROD-006", name="Heavy Duty Gearbox", description="10:1 ratio industrial gearbox", product_type=ProductType.FG, part_number="GB-HD-10", unit_id=pcs.id, is_active=True)
-
-    db.add_all([p1, p2, p3, p4, p5, p6, p7])
+    # ---------- 3. Products ----------
+    products_by_code: dict[str, Product] = {}
+    for p in data.get("products", []):
+        product = Product(
+            code=p["code"],
+            name=p["name"],
+            description=p.get("description"),
+            product_type=ProductType(p["product_type"]),
+            part_number=p.get("part_number"),
+            image_url=p.get("image_url"),
+            unit_id=units_by_code[p["unit_code"]].id,
+            is_active=p.get("is_active", True),
+        )
+        db.add(product)
+        products_by_code[p["code"]] = product
     db.commit()
+    for product in products_by_code.values():
+        db.refresh(product)
 
-    db.refresh(p1)
-    db.refresh(p2)
-    db.refresh(p3)
-    db.refresh(p4)
-    db.refresh(p5)
-    db.refresh(p6)
-    db.refresh(p7)
-
-    # 4. Seed Warehouses
-    wh1 = Warehouse(code="WH1", name="Main Warehouse", address="100 Logistics Way", is_active=True)
-    wh2 = Warehouse(code="WH2", name="Overflow Warehouse", address="200 Warehouse Row", is_active=True)
-    db.add_all([wh1, wh2])
+    # ---------- 4. Warehouses ----------
+    warehouses_by_code: dict[str, Warehouse] = {}
+    for w in data.get("warehouses", []):
+        warehouse = Warehouse(code=w["code"], name=w["name"], address=w.get("address"), is_active=w.get("is_active", True))
+        db.add(warehouse)
+        warehouses_by_code[w["code"]] = warehouse
     db.commit()
+    for warehouse in warehouses_by_code.values():
+        db.refresh(warehouse)
 
-    db.refresh(wh1)
-    db.refresh(wh2)
-
-    # 5. Seed Racks
-    rack_a = Rack(code="A", description="Rack A (Main Aisle)", warehouse_id=wh1.id)
-    rack_b = Rack(code="B", description="Rack B (Secondary Aisle)", warehouse_id=wh1.id)
-    rack_c = Rack(code="C", description="Rack C (Overflow Area)", warehouse_id=wh2.id)
-    db.add_all([rack_a, rack_b, rack_c])
+    # ---------- 5. Racks (keyed by warehouse_code + code, since rack codes repeat across warehouses) ----------
+    racks_by_key: dict[tuple[str, str], Rack] = {}
+    for r in data.get("racks", []):
+        rack = Rack(
+            code=r["code"],
+            description=r.get("description"),
+            warehouse_id=warehouses_by_code[r["warehouse_code"]].id,
+        )
+        db.add(rack)
+        racks_by_key[(r["warehouse_code"], r["code"])] = rack
     db.commit()
+    for rack in racks_by_key.values():
+        db.refresh(rack)
 
-    db.refresh(rack_a)
-    db.refresh(rack_b)
-    db.refresh(rack_c)
-
-    # 6. Seed Shelves
-    shelf_a01 = Shelf(code="01", rack_id=rack_a.id)
-    shelf_a02 = Shelf(code="02", rack_id=rack_a.id)
-    shelf_b01 = Shelf(code="01", rack_id=rack_b.id)
-    shelf_c01 = Shelf(code="01", rack_id=rack_c.id)
-    db.add_all([shelf_a01, shelf_a02, shelf_b01, shelf_c01])
+    # ---------- 6. Shelves (keyed by warehouse_code + rack_code + code) ----------
+    shelves_by_key: dict[tuple[str, str, str], Shelf] = {}
+    for s in data.get("shelves", []):
+        rack = racks_by_key[(s["warehouse_code"], s["rack_code"])]
+        shelf = Shelf(code=s["code"], rack_id=rack.id)
+        db.add(shelf)
+        shelves_by_key[(s["warehouse_code"], s["rack_code"], s["code"])] = shelf
     db.commit()
+    for shelf in shelves_by_key.values():
+        db.refresh(shelf)
 
-    db.refresh(shelf_a01)
-    db.refresh(shelf_a02)
-    db.refresh(shelf_b01)
-    db.refresh(shelf_c01)
-
-    # 7. Seed Bins
-    bin_a0101 = Bin(code="01", shelf_id=shelf_a01.id)
-    bin_a0102 = Bin(code="02", shelf_id=shelf_a01.id)
-    bin_a0201 = Bin(code="01", shelf_id=shelf_a02.id)
-    bin_b0101 = Bin(code="01", shelf_id=shelf_b01.id)
-    bin_c0101 = Bin(code="01", shelf_id=shelf_c01.id)
-    db.add_all([bin_a0101, bin_a0102, bin_a0201, bin_b0101, bin_c0101])
+    # ---------- 7. Bins (keyed by warehouse_code + rack_code + shelf_code + code) ----------
+    bins_by_key: dict[tuple[str, str, str, str], Bin] = {}
+    for b in data.get("bins", []):
+        shelf = shelves_by_key[(b["warehouse_code"], b["rack_code"], b["shelf_code"])]
+        bin_ = Bin(code=b["code"], shelf_id=shelf.id)
+        db.add(bin_)
+        bins_by_key[(b["warehouse_code"], b["rack_code"], b["shelf_code"], b["code"])] = bin_
     db.commit()
+    for bin_ in bins_by_key.values():
+        db.refresh(bin_)
 
-    db.refresh(bin_a0101)
-    db.refresh(bin_a0102)
-    db.refresh(bin_a0201)
-    db.refresh(bin_b0101)
-    db.refresh(bin_c0101)
-
-    # 8. Seed Locations
-    # Standard locations
-    loc1 = Location(category=LocationCategory.STANDARD, location_code="WH1-A-01-01", warehouse_id=wh1.id, rack_id=rack_a.id, shelf_id=shelf_a01.id, bin_id=bin_a0101.id)
-    loc2 = Location(category=LocationCategory.STANDARD, location_code="WH1-A-01-02", warehouse_id=wh1.id, rack_id=rack_a.id, shelf_id=shelf_a01.id, bin_id=bin_a0102.id)
-    loc3 = Location(category=LocationCategory.STANDARD, location_code="WH1-A-02-01", warehouse_id=wh1.id, rack_id=rack_a.id, shelf_id=shelf_a02.id, bin_id=bin_a0201.id)
-    loc4 = Location(category=LocationCategory.STANDARD, location_code="WH1-B-01-01", warehouse_id=wh1.id, rack_id=rack_b.id, shelf_id=shelf_b01.id, bin_id=bin_b0101.id)
-    loc5 = Location(category=LocationCategory.STANDARD, location_code="WH2-C-01-01", warehouse_id=wh2.id, rack_id=rack_c.id, shelf_id=shelf_c01.id, bin_id=bin_c0101.id)
-
-    # Special category locations (warehouse + rack level only)
-    loc_sheet = Location(category=LocationCategory.SHEET, location_code="SHEET-A", warehouse_id=wh1.id, rack_id=rack_a.id)
-    loc_pipe = Location(category=LocationCategory.PIPE, location_code="PIPE-B", warehouse_id=wh1.id, rack_id=rack_b.id)
-
-    db.add_all([loc1, loc2, loc3, loc4, loc5, loc_sheet, loc_pipe])
+    # ---------- 8. Locations ----------
+    # STANDARD locations use the full warehouse->rack->shelf->bin hierarchy.
+    # SHEET / PIPE / SCRAP locations are rack-level-only zones.
+    locations_by_code: dict[str, Location] = {}
+    for loc in data.get("locations", []):
+        warehouse = warehouses_by_code[loc["warehouse_code"]]
+        rack = racks_by_key.get((loc["warehouse_code"], loc["rack_code"])) if loc.get("rack_code") else None
+        shelf = (
+            shelves_by_key.get((loc["warehouse_code"], loc["rack_code"], loc["shelf_code"]))
+            if loc.get("shelf_code")
+            else None
+        )
+        bin_ = (
+            bins_by_key.get((loc["warehouse_code"], loc["rack_code"], loc["shelf_code"], loc["bin_code"]))
+            if loc.get("bin_code")
+            else None
+        )
+        location = Location(
+            category=LocationCategory(loc["category"]),
+            location_code=loc["location_code"],
+            warehouse_id=warehouse.id,
+            rack_id=rack.id if rack else None,
+            shelf_id=shelf.id if shelf else None,
+            bin_id=bin_.id if bin_ else None,
+        )
+        db.add(location)
+        locations_by_code[loc["location_code"]] = location
     db.commit()
+    for location in locations_by_code.values():
+        db.refresh(location)
 
-    db.refresh(loc1)
-    db.refresh(loc2)
-    db.refresh(loc3)
-    db.refresh(loc4)
-    db.refresh(loc5)
-    db.refresh(loc_sheet)
-    db.refresh(loc_pipe)
-
-    # 9. Seed Inventories
-    # Steel Rod: 120 units in PIPE-B, 15 reserved, status OK (available: 105)
-    inv1 = Inventory(product_id=p1.id, manufacturer_id=mfg3.id, location_id=loc_pipe.id, batch_number="B-ST-099", manufacturing_date=date.today() - timedelta(days=30), quantity=120.0, reserved_quantity=15.0, status=InventoryStatus.OK)
-    
-    # Copper Wire: 50 units in WH1-A-01-01, 0 reserved, status OK (available: 50)
-    inv2 = Inventory(product_id=p2.id, manufacturer_id=mfg2.id, location_id=loc1.id, batch_number="B-CW-204", manufacturing_date=date.today() - timedelta(days=15), quantity=50.0, reserved_quantity=0.0, status=InventoryStatus.OK)
-    
-    # Sub-assembly Alpha: 10 units in WH1-A-01-02, 2 reserved, status OK (available: 8)
-    inv3 = Inventory(product_id=p3.id, manufacturer_id=mfg1.id, location_id=loc2.id, batch_number="B-SA-501", manufacturing_date=date.today() - timedelta(days=10), quantity=10.0, reserved_quantity=2.0, status=InventoryStatus.OK)
-    
-    # Control Board v2: 15 units in WH1-A-02-01, 5 reserved, status HLD (On Hold) -> available quantity is 10, total qty is 15.
-    inv4 = Inventory(product_id=p4.id, manufacturer_id=mfg1.id, location_id=loc3.id, batch_number="B-CB-302", manufacturing_date=date.today() - timedelta(days=5), quantity=15.0, reserved_quantity=5.0, status=InventoryStatus.HLD)
-    
-    # Industrial Widget: 25 units in WH1-A-02-01, 5 reserved, status OK (available: 20)
-    inv5 = Inventory(product_id=p5.id, manufacturer_id=mfg1.id, location_id=loc3.id, batch_number="B-IW-801", manufacturing_date=date.today() - timedelta(days=20), quantity=25.0, reserved_quantity=5.0, status=InventoryStatus.OK)
-    
-    # Industrial Widget: 5 units in WH2-C-01-01, 0 reserved, status OK (available: 5). Total Industrial Widget: 20 + 5 = 25.
-    inv6 = Inventory(product_id=p5.id, manufacturer_id=mfg1.id, location_id=loc5.id, batch_number="B-IW-802", manufacturing_date=date.today() - timedelta(days=21), quantity=5.0, reserved_quantity=0.0, status=InventoryStatus.OK)
-
-    # Heavy Duty Gearbox: 2 units in WH1-B-01-01, 2 reserved, status OK (available: 0)
-    inv7 = Inventory(product_id=p6.id, manufacturer_id=mfg2.id, location_id=loc4.id, batch_number="B-GB-700", manufacturing_date=date.today() - timedelta(days=45), quantity=2.0, reserved_quantity=2.0, status=InventoryStatus.OK)
-
-    # Hydraulic Fluid: 80 units in SHEET-A, manufactured by MFG-003, batch B-HF-01, qty 80, reserved 0, status OK (available: 80)
-    inv8 = Inventory(product_id=p7.id, manufacturer_id=mfg3.id, location_id=loc_sheet.id, batch_number="B-HF-01", manufacturing_date=date.today() - timedelta(days=60), quantity=80.0, reserved_quantity=0.0, status=InventoryStatus.OK)
-
-    db.add_all([inv1, inv2, inv3, inv4, inv5, inv6, inv7, inv8])
+    # ---------- 9. Inventories ----------
+    inventory_rows = []
+    for inv in data.get("inventories", []):
+        manufacturing_date = date.today() - timedelta(days=inv.get("manufacturing_date_offset_days", 0))
+        row = Inventory(
+            product_id=products_by_code[inv["product_code"]].id,
+            manufacturer_id=manufacturers_by_code[inv["manufacturer_code"]].id,
+            location_id=locations_by_code[inv["location_code"]].id,
+            batch_number=inv["batch_number"],
+            manufacturing_date=manufacturing_date,
+            quantity=inv["quantity"],
+            reserved_quantity=inv.get("reserved_quantity", 0.0),
+            status=InventoryStatus(inv.get("status", "OK")),
+        )
+        db.add(row)
+        inventory_rows.append(row)
     db.commit()
+    for row in inventory_rows:
+        db.refresh(row)
 
-    return {"status": "success", "message": "Database seeded with synthetic data successfully."}
+    counts = {
+        "units": len(units_by_code),
+        "manufacturers": len(manufacturers_by_code),
+        "products": len(products_by_code),
+        "warehouses": len(warehouses_by_code),
+        "racks": len(racks_by_key),
+        "shelves": len(shelves_by_key),
+        "bins": len(bins_by_key),
+        "locations": len(locations_by_code),
+        "inventories": len(inventory_rows),
+    }
+
+    log_transaction(TransactionAction.SEED, "Database", None, counts)
+
+    return {"status": "success", "message": "Database seeded from seed_data.json successfully.", "counts": counts}

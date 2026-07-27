@@ -13,6 +13,7 @@ class ProductBase(BaseModel):
     description: Optional[str] = Field(None, max_length=255)
     product_type: ProductType
     part_number: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=255)
     unit_id: int
 
 
@@ -25,6 +26,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=255)
     product_type: Optional[ProductType] = None
     part_number: Optional[str] = Field(None, max_length=50)
+    image_url: Optional[str] = Field(None, max_length=255)
     unit_id: Optional[int] = None
 
 

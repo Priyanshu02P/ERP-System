@@ -1,0 +1,67 @@
+{
+  "units": [
+    {"code": "PCS", "name": "Pieces", "description": "Individual items", "is_active": true},
+    {"code": "KG", "name": "Kilograms", "description": "Weight measurement", "is_active": true},
+    {"code": "MTR", "name": "Meters", "description": "Length measurement", "is_active": true},
+    {"code": "LIT", "name": "Liters", "description": "Volume measurement", "is_active": true}
+  ],
+  "manufacturers": [
+    {"code": "MFG-001", "name": "Apex Industries", "address": "123 Industrial Parkway", "contact_info": "sales@apex.com", "is_active": true},
+    {"code": "MFG-002", "name": "Global Tech Parts", "address": "456 Tech Blvd", "contact_info": "support@globaltech.com", "is_active": true},
+    {"code": "MFG-003", "name": "Eco Materials Corp", "address": "789 Green Rd", "contact_info": "info@ecomaterials.com", "is_active": true}
+  ],
+  "products": [
+    {"code": "PROD-001", "name": "Steel Rod 10mm", "description": "High-tensile structural steel rod", "product_type": "RAW", "part_number": "SR-10", "unit_code": "MTR", "image_url": "/assets/products/PROD-001.png", "is_active": true},
+    {"code": "PROD-002", "name": "Copper Wire 2mm", "description": "Conductive copper wiring", "product_type": "RAW", "part_number": "CW-02", "unit_code": "MTR", "image_url": "/assets/products/PROD-002.png", "is_active": true},
+    {"code": "PROD-007", "name": "Hydraulic Fluid", "description": "Premium ISO 46 hydraulic oil", "product_type": "RAW", "part_number": "HF-46", "unit_code": "LIT", "image_url": "/assets/products/PROD-007.png", "is_active": true},
+    {"code": "PROD-003", "name": "Sub-assembly Alpha", "description": "Pre-wired mechanical sub-assembly", "product_type": "WIP", "part_number": "SA-ALPHA", "unit_code": "PCS", "image_url": "/assets/products/PROD-003.png", "is_active": true},
+    {"code": "PROD-004", "name": "Control Board v2", "description": "Microcontroller logic board", "product_type": "WIP", "part_number": "CB-V2", "unit_code": "PCS", "image_url": "/assets/products/PROD-004.png", "is_active": true},
+    {"code": "PROD-005", "name": "Industrial Widget", "description": "Complete heavy duty widget assembly", "product_type": "FG", "part_number": "IW-5000", "unit_code": "PCS", "image_url": "/assets/products/PROD-005.png", "is_active": true},
+    {"code": "PROD-006", "name": "Heavy Duty Gearbox", "description": "10:1 ratio industrial gearbox", "product_type": "FG", "part_number": "GB-HD-10", "unit_code": "PCS", "image_url": "/assets/products/PROD-006.png", "is_active": true}
+  ],
+  "warehouses": [
+    {"code": "WH1", "name": "Main Warehouse", "address": "100 Logistics Way", "is_active": true},
+    {"code": "WH2", "name": "Overflow Warehouse", "address": "200 Warehouse Row", "is_active": true},
+    {"code": "SCRAP-WH", "name": "Scrap Yard", "address": "101 Disposal Rd", "is_active": true}
+  ],
+  "racks": [
+    {"code": "A", "description": "Rack A (Main Aisle)", "warehouse_code": "WH1"},
+    {"code": "B", "description": "Rack B (Secondary Aisle)", "warehouse_code": "WH1"},
+    {"code": "C", "description": "Rack C (Overflow Area)", "warehouse_code": "WH2"},
+    {"code": "S1", "description": "Scrap Yard Pile 1", "warehouse_code": "SCRAP-WH"}
+  ],
+  "shelves": [
+    {"code": "01", "rack_code": "A", "warehouse_code": "WH1"},
+    {"code": "02", "rack_code": "A", "warehouse_code": "WH1"},
+    {"code": "01", "rack_code": "B", "warehouse_code": "WH1"},
+    {"code": "01", "rack_code": "C", "warehouse_code": "WH2"}
+  ],
+  "bins": [
+    {"code": "01", "shelf_code": "01", "rack_code": "A", "warehouse_code": "WH1"},
+    {"code": "02", "shelf_code": "01", "rack_code": "A", "warehouse_code": "WH1"},
+    {"code": "01", "shelf_code": "02", "rack_code": "A", "warehouse_code": "WH1"},
+    {"code": "01", "shelf_code": "01", "rack_code": "B", "warehouse_code": "WH1"},
+    {"code": "01", "shelf_code": "01", "rack_code": "C", "warehouse_code": "WH2"}
+  ],
+  "locations": [
+    {"category": "STANDARD", "location_code": "WH1-A-01-01", "warehouse_code": "WH1", "rack_code": "A", "shelf_code": "01", "bin_code": "01"},
+    {"category": "STANDARD", "location_code": "WH1-A-01-02", "warehouse_code": "WH1", "rack_code": "A", "shelf_code": "01", "bin_code": "02"},
+    {"category": "STANDARD", "location_code": "WH1-A-02-01", "warehouse_code": "WH1", "rack_code": "A", "shelf_code": "02", "bin_code": "01"},
+    {"category": "STANDARD", "location_code": "WH1-B-01-01", "warehouse_code": "WH1", "rack_code": "B", "shelf_code": "01", "bin_code": "01"},
+    {"category": "STANDARD", "location_code": "WH2-C-01-01", "warehouse_code": "WH2", "rack_code": "C", "shelf_code": "01", "bin_code": "01"},
+    {"category": "SHEET", "location_code": "SHEET-A", "warehouse_code": "WH1", "rack_code": "A"},
+    {"category": "PIPE", "location_code": "PIPE-B", "warehouse_code": "WH1", "rack_code": "B"},
+    {"category": "SCRAP", "location_code": "SCRAP-1", "warehouse_code": "SCRAP-WH", "rack_code": "S1"}
+  ],
+  "inventories": [
+    {"product_code": "PROD-001", "manufacturer_code": "MFG-003", "location_code": "PIPE-B", "batch_number": "B-ST-099", "manufacturing_date_offset_days": 30, "quantity": 120.0, "reserved_quantity": 15.0, "status": "OK"},
+    {"product_code": "PROD-002", "manufacturer_code": "MFG-002", "location_code": "WH1-A-01-01", "batch_number": "B-CW-204", "manufacturing_date_offset_days": 15, "quantity": 50.0, "reserved_quantity": 0.0, "status": "OK"},
+    {"product_code": "PROD-003", "manufacturer_code": "MFG-001", "location_code": "WH1-A-01-02", "batch_number": "B-SA-501", "manufacturing_date_offset_days": 10, "quantity": 10.0, "reserved_quantity": 2.0, "status": "OK"},
+    {"product_code": "PROD-004", "manufacturer_code": "MFG-001", "location_code": "WH1-A-02-01", "batch_number": "B-CB-302", "manufacturing_date_offset_days": 5, "quantity": 15.0, "reserved_quantity": 5.0, "status": "HLD"},
+    {"product_code": "PROD-005", "manufacturer_code": "MFG-001", "location_code": "WH1-A-02-01", "batch_number": "B-IW-801", "manufacturing_date_offset_days": 20, "quantity": 25.0, "reserved_quantity": 5.0, "status": "OK"},
+    {"product_code": "PROD-005", "manufacturer_code": "MFG-001", "location_code": "WH2-C-01-01", "batch_number": "B-IW-802", "manufacturing_date_offset_days": 21, "quantity": 5.0, "reserved_quantity": 0.0, "status": "OK"},
+    {"product_code": "PROD-006", "manufacturer_code": "MFG-002", "location_code": "WH1-B-01-01", "batch_number": "B-GB-700", "manufacturing_date_offset_days": 45, "quantity": 2.0, "reserved_quantity": 2.0, "status": "OK"},
+    {"product_code": "PROD-007", "manufacturer_code": "MFG-003", "location_code": "SHEET-A", "batch_number": "B-HF-01", "manufacturing_date_offset_days": 60, "quantity": 80.0, "reserved_quantity": 0.0, "status": "OK"},
+    {"product_code": "PROD-001", "manufacturer_code": "MFG-003", "location_code": "SCRAP-1", "batch_number": "B-ST-099-S", "manufacturing_date_offset_days": 30, "quantity": 5.0, "reserved_quantity": 0.0, "status": "RJC"}
+  ]
+}

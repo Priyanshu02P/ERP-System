@@ -1,0 +1,3 @@
+{"timestamp": "2026-07-27T08:11:57.109297+00:00", "action": "SEED", "entity": "Database", "entity_id": null, "details": {"units": 4, "manufacturers": 3, "products": 7, "warehouses": 3, "racks": 4, "shelves": 4, "bins": 5, "locations": 8, "inventories": 9}}
+{"timestamp": "2026-07-27T08:13:52.488054+00:00", "action": "RECEIVE", "entity": "Inventory", "entity_id": 10, "details": {"product_id": 3, "manufacturer_id": 1, "location_id": 1, "batch_number": "B-ST-200", "quantity": 1.0, "status": "OK"}}
+{"timestamp": "2026-07-27T08:14:30.339758+00:00", "action": "DELETE", "entity": "Inventory", "entity_id": 10, "details": {"product_id": 3, "batch_number": "B-ST-200", "quantity": 1.0, "status": "OK"}}
