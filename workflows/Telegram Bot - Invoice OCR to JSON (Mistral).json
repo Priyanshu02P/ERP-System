@@ -1,0 +1,587 @@
+{
+  "name": "Telegram Bot - Invoice OCR to JSON (Mistral)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "8f60fb51-4424-480a-a63e-2421fce2b94a",
+      "name": "Telegram Trigger - New Invoice",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2640,
+        240
+      ],
+      "webhookId": "telegram-invoice-bot",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $input.first().json.message || {};\nconst hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;\nconst hasDocument = !!msg.document;\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    hasFile: hasPhoto || hasDocument\n  }\n}];"
+      },
+      "id": "3f48dbc4-5919-4f67-a29b-8e0ff96d17d2",
+      "name": "Check Has File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2416,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-file-cond",
+              "leftValue": "={{ $json.hasFile }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1855ea2-2f9a-4bab-adef-49998bc37681",
+      "name": "Has File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Please send the invoice as a photo or a PDF/image file.",
+        "additionalFields": {}
+      },
+      "id": "858298c5-2223-4e26-8728-e7694d38240b",
+      "name": "Ask For File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1984,
+        464
+      ],
+      "webhookId": "1ee798f5-2055-423d-9e6a-5f654ff01301",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message;\nlet fileId, mimeType, fileName;\n\nif (msg.document) {\n  fileId = msg.document.file_id;\n  mimeType = msg.document.mime_type || 'application/octet-stream';\n  fileName = msg.document.file_name || 'invoice';\n} else {\n  const photos = msg.photo;\n  const largest = photos[photos.length - 1]; // highest resolution\n  fileId = largest.file_id;\n  mimeType = 'image/jpeg';\n  fileName = 'invoice.jpg';\n}\n\nreturn [{\n  json: {\n    fileId,\n    mimeType,\n    fileName,\n    chatId: msg.chat.id\n  }\n}];"
+      },
+      "id": "5adc8f78-413a-4d12-8854-6fda8bd75694",
+      "name": "Extract File ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1984,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.fileId }}",
+        "additionalFields": {}
+      },
+      "id": "e0a74580-f4a5-4d7e-b01c-a27797027f09",
+      "name": "Download File From Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1760,
+        112
+      ],
+      "webhookId": "934dd55e-71a5-48b8-8a7f-e1791fd8e241",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst binaryKeys = Object.keys(item.binary || {});\nif (binaryKeys.length === 0) {\n  throw new Error('No file binary found after downloading from Telegram.');\n}\nconst binaryKey = binaryKeys[0];\nconst buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst base64 = buffer.toString('base64');\n\nconst mimeType = $('Extract File ID').item.json.mimeType || item.binary[binaryKey].mimeType || 'application/octet-stream';\nconst isImage = mimeType.startsWith('image/');\nconst dataUrl = `data:${mimeType};base64,${base64}`;\n\nreturn [{\n  json: {\n    dataUrl,\n    isImage,\n    chatId: $('Extract File ID').item.json.chatId\n  }\n}];"
+      },
+      "id": "c21da776-ee18-498e-8cdf-7b8be9b3345e",
+      "name": "Prepare Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"mistral-ocr-latest\", \"document\": { \"type\": $json.isImage ? \"image_url\" : \"document_url\", [$json.isImage ? \"image_url\" : \"document_url\"]: $json.dataUrl }, \"include_image_base64\": false } }}",
+        "options": {}
+      },
+      "id": "23275d46-6d98-417a-b434-ea7f2736f95a",
+      "name": "Mistral OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1328,
+        112
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kmrEDdfAKsTLGg6h",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst pages = response.pages || [];\nconst ocrText = pages.map(p => p.markdown || '').join('\\n\\n');\n\nreturn [{\n  json: {\n    ocrText,\n    pageCount: pages.length,\n    chatId: $('Prepare Base64').item.json.chatId\n  }\n}];"
+      },
+      "id": "0319a445-1a77-448f-879a-cc9cafc066ac",
+      "name": "Combine OCR Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"mistral-large-latest\",\n  \"temperature\": 0,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an invoice-parsing assistant. You will receive OCR text extracted from an invoice. Extract the data and return ONLY valid JSON (no markdown, no commentary) matching exactly this schema: { \\\"invoice_no\\\": string, \\\"date_of_issue\\\": string, \\\"seller\\\": { \\\"name\\\": string, \\\"address\\\": string, \\\"tax_id\\\": string, \\\"iban\\\": string }, \\\"client\\\": { \\\"name\\\": string, \\\"address\\\": string, \\\"tax_id\\\": string }, \\\"items\\\": [ { \\\"no\\\": number, \\\"description\\\": string, \\\"qty\\\": number, \\\"unit\\\": string, \\\"net_price\\\": number, \\\"net_worth\\\": number, \\\"vat_percent\\\": number, \\\"gross_worth\\\": number } ], \\\"summary\\\": [ { \\\"vat_percent\\\": number, \\\"net_worth\\\": number, \\\"vat\\\": number, \\\"gross_worth\\\": number } ], \\\"total\\\": { \\\"net_worth\\\": number, \\\"vat\\\": number, \\\"gross_worth\\\": number } }. Use numbers (not strings) for all numeric fields, using '.' as decimal separator. If a field is missing in the text, use null.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": $json.ocrText\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "id": "205e449a-d60e-40a2-94a1-7c430ae1b28d",
+      "name": "Mistral - Extract Structured JSON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -880,
+        112
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kmrEDdfAKsTLGg6h",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.text;\n\nif (!content) {\n  throw new Error('No content returned from Mistral chat completion.');\n}\n\nlet invoiceJson;\ntry {\n  invoiceJson = JSON.parse(content);\n} catch (e) {\n  throw new Error('Failed to parse JSON from model output: ' + e.message);\n}\n\nreturn [{ json: invoiceJson }];"
+      },
+      "id": "1c1c7d76-9af0-45d2-b62f-9d6b1177134e",
+      "name": "Parse Final Invoice JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const invoice = $input.first().json;\nconst text = JSON.stringify(invoice, null, 2);\n\nreturn [{\n  json: {\n    invoice,\n    text,\n    fitsInMessage: text.length < 3500\n  }\n}];"
+      },
+      "id": "7d808525-0358-4e90-a90e-9f59e08acfb5",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fits-cond",
+              "leftValue": "={{ $json.fitsInMessage }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9cd65cf1-acab-4b0a-be15-8c5fdbb6efb1",
+      "name": "Fits In Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract File ID').item.json.chatId }}",
+        "text": "=Here's the extracted invoice data:\n```json\n{{ $json.text }}\n```",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "0ee977d5-2bfa-4f73-9998-1259c57ded6a",
+      "name": "Send JSON As Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "0d6f2b8b-b597-4b3e-bb1d-946ebc2a5bb9",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.text;\nconst buffer = Buffer.from(text, 'utf-8');\nconst binary = await this.helpers.prepareBinaryData(buffer, 'invoice.json', 'application/json');\n\nreturn [{\n  json: {},\n  binary: { data: binary }\n}];"
+      },
+      "id": "b1f7808f-9cb2-426a-b6ad-e19b80c352b4",
+      "name": "Create JSON File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Extract File ID').item.json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Here's the extracted invoice data (too long for a message)."
+        }
+      },
+      "id": "aecad98f-cd13-49c8-bdcc-7cef1d8398ff",
+      "name": "Send JSON As File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        224
+      ],
+      "webhookId": "82066b6c-bb49-4479-87e6-62b430bdb652",
+      "credentials": {
+        "telegramApi": {
+          "id": "L3M7BSEGwTRXiXgA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputType": "url",
+        "url": "={{ $json.dataUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mistralAi",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        368
+      ],
+      "id": "ba0c8e3a-ca12-4861-b38b-621882d1a2be",
+      "name": "Extract text",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "hTvY9mEqUryCRk3G",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an invoice-parsing assistant. You will receive OCR text extracted from an invoice. Extract the data and return ONLY valid JSON (no markdown, no commentary) matching exactly this schema: { \\\"invoice_no\\\": string, \\\"date_of_issue\\\": string, \\\"seller\\\": { \\\"name\\\": string, \\\"address\\\": string, \\\"tax_id\\\": string, \\\"iban\\\": string }, \\\"client\\\": { \\\"name\\\": string, \\\"address\\\": string, \\\"tax_id\\\": string }, \\\"items\\\": [ { \\\"no\\\": number, \\\"description\\\": string, \\\"qty\\\": number, \\\"unit\\\": string, \\\"net_price\\\": number, \\\"net_worth\\\": number, \\\"vat_percent\\\": number, \\\"gross_worth\\\": number } ], \\\"summary\\\": [ { \\\"vat_percent\\\": number, \\\"net_worth\\\": number, \\\"vat\\\": number, \\\"gross_worth\\\": number } ], \\\"total\\\": { \\\"net_worth\\\": number, \\\"vat\\\": number, \\\"gross_worth\\\": number } }. Use numbers (not strings) for all numeric fields, using '.' as decimal separator. If a field is missing in the text, use null.\"\n    \nOCR-Text: {{ $json.pages[0].markdown }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -976,
+        368
+      ],
+      "id": "97f970ab-dba6-4189-bf24-3b7e1123aada",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        528
+      ],
+      "id": "5d9aeabf-ea35-48f1-936e-7b9344bfaf08",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "hTvY9mEqUryCRk3G",
+          "name": "Mistral Cloud account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger - New Invoice": {
+      "main": [
+        [
+          {
+            "node": "Check Has File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Has File": {
+      "main": [
+        [
+          {
+            "node": "Has File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has File?": {
+      "main": [
+        [
+          {
+            "node": "Extract File ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask For File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract File ID": {
+      "main": [
+        [
+          {
+            "node": "Download File From Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File From Telegram": {
+      "main": [
+        [
+          {
+            "node": "Prepare Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Base64": {
+      "main": [
+        [
+          {
+            "node": "Extract text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral OCR": {
+      "main": [
+        [
+          {
+            "node": "Combine OCR Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine OCR Pages": {
+      "main": [
+        [
+          {
+            "node": "Mistral - Extract Structured JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral - Extract Structured JSON": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Final Invoice JSON": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Fits In Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fits In Message?": {
+      "main": [
+        [
+          {
+            "node": "Send JSON As Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create JSON File": {
+      "main": [
+        [
+          {
+            "node": "Send JSON As File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract text": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse Final Invoice JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2941d496-9222-425c-8c44-35f897fc18ed",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6474717bfa8d7840328ea2cb1aee49b5c71f4d987d0fcf170fb85b9b043d93f1"
+  },
+  "nodeGroups": [],
+  "id": "CPiJrx8wcjlK1qUb",
+  "tags": []
+}
