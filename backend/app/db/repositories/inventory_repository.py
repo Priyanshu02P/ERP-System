@@ -42,6 +42,23 @@ class InventoryRepository(BaseRepository[Inventory]):
             if r.status == InventoryStatus.OK
         )
 
+    def get_available_stock_map(self) -> dict[int, float]:
+        """
+        Same definition as get_available_stock, but for every product in
+        one grouped query instead of N+1 - used by the reorder-suggestions
+        dashboard endpoint, which has to check every active product.
+        """
+        rows = (
+            self.db.query(
+                Inventory.product_id,
+                func.coalesce(func.sum(Inventory.quantity - Inventory.reserved_quantity), 0),
+            )
+            .filter(Inventory.status == InventoryStatus.OK)
+            .group_by(Inventory.product_id)
+            .all()
+        )
+        return {product_id: float(total) for product_id, total in rows}
+
     def get_total_stock(self, product_id: int) -> float:
         total = (
             self.db.query(func.coalesce(func.sum(Inventory.quantity), 0))

@@ -8,6 +8,10 @@ from app.services.exceptions import ConflictError, ReferencedEntityError
 
 
 class UnitService(BaseService[Unit]):
+    """Master data for measurement units (KG, PCS, MTR, ...) that every
+    Product is expressed in. Deactivate rather than delete once a unit is
+    in use elsewhere (see ReferencedEntityError below)."""
+
     def __init__(self, db: Session):
         self.repository: UnitRepository = UnitRepository(db)
         super().__init__(self.repository, entity_name="Unit")

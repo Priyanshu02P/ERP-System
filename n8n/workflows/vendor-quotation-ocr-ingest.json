@@ -1,0 +1,164 @@
+{
+  "name": "Vendor Quotation OCR \u2192 Ingest",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Procurement_Implementation_Plan.md \u00a76, bullet 3: same Telegram/WhatsApp-trigger + Mistral-OCR pattern as the invoice workflow, posting to POST /quotations/ingest instead. A supplier (or the purchase officer on their behalf) sends a photo of a quoted price list against an RFQ; the workflow resolves which RFQ from the chat's caption/context and files it as PENDING_REVIEW."
+  },
+  "nodes": [
+    {
+      "id": "530dda2f-3279-4559-adab-aadcc2f318d8",
+      "name": "Telegram Trigger (quotation photo/doc)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-500, 0],
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": { "download": true }
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "7d25d923-eebf-4dd3-96de-692916c3f753",
+      "name": "OCR Parse Quotation (Mistral)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-260, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "86258f1a-eba8-4c13-af62-abc5fc61b9da",
+      "name": "Resolve RFQ from caption",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 0],
+      "notes": "Reads the RFQ number from the Telegram message caption (e.g. 'RFQ-2026-00012') and looks it up via GET /rfqs so the ingest call can carry rfq_id + supplier_id. Falls back to standalone (rfq_id: null) if no RFQ number is found in the caption - VendorQuotationCreate/Ingest both support a standalone quotation.",
+      "parameters": {
+        "jsCode": "const caption = $('Telegram Trigger (quotation photo/doc)').item.json.message.caption || '';\nconst match = caption.match(/RFQ-\\d{4}-\\d{5}/);\nreturn [{ json: { ...$json, rfq_number: match ? match[0] : null } }];"
+      }
+    },
+    {
+      "id": "df613b40-9ba8-48b4-94be-2fb330bf0d7e",
+      "name": "GET /rfqs?status=SENT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, -100],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL }}/rfqs",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "status", "value": "SENT" }] }
+      }
+    },
+    {
+      "id": "9eda32da-fcd9-45b5-91bc-df7d528f22ad",
+      "name": "Match RFQ number \u2192 rfq_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, -100],
+      "parameters": {
+        "jsCode": "const parsed = $('Resolve RFQ from caption').item.json;\nconst rfqs = $input.all().map(i => i.json);\nconst rfq = rfqs.find(r => r.rfq_number === parsed.rfq_number);\nreturn [{ json: { ...parsed, rfq_id: rfq ? rfq.id : null } }];"
+      }
+    },
+    {
+      "id": "7f882a39-1e1a-4047-b754-544c30bf21dd",
+      "name": "POST /quotations/ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, -100],
+      "notes": "The only endpoint this workflow calls to write a quotation - always lands in PENDING_REVIEW, see BUSINESS_DECISIONS.md \u00a73.",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/quotations/ingest",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { rfq_id: $json.rfq_id, supplier_id: $json.supplier_id, quoted_date: $json.quoted_date, valid_until: $json.valid_until ?? null, source: \"OCR_BOT\", source_confidence: $json.source_confidence ?? 0.8, raw_document_url: $json.raw_document_url ?? null, items: $json.items } }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "6101a94e-6dcf-4d36-bfec-40cf793f6e79",
+      "name": "Reply in Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [940, -100],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger (quotation photo/doc)').item.json.message.chat.id }}",
+        "text": "=Got the quotation \u2013 it's in the review queue now. A purchase officer will confirm the line items before it can be selected.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "3f464fb3-19d6-4297-8aa8-c4a95e8faeb6",
+      "name": "Reply: RFQ not found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [460, 100],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger (quotation photo/doc)').item.json.message.chat.id }}",
+        "text": "Couldn't find that RFQ number, or none was mentioned in the caption - forwarding to a purchase officer to file manually.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "d2237257-50b3-40e2-9bf1-5a70323f03a1",
+      "name": "RFQ resolved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, -20],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.rfq_id }}",
+              "rightValue": "",
+              "operator": { "type": "number", "operation": "exists" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger (quotation photo/doc)": {
+      "main": [[{ "node": "OCR Parse Quotation (Mistral)", "type": "main", "index": 0 }]]
+    },
+    "OCR Parse Quotation (Mistral)": {
+      "main": [[{ "node": "Resolve RFQ from caption", "type": "main", "index": 0 }]]
+    },
+    "Resolve RFQ from caption": {
+      "main": [[{ "node": "GET /rfqs?status=SENT", "type": "main", "index": 0 }]]
+    },
+    "GET /rfqs?status=SENT": {
+      "main": [[{ "node": "Match RFQ number \u2192 rfq_id", "type": "main", "index": 0 }]]
+    },
+    "Match RFQ number \u2192 rfq_id": {
+      "main": [[{ "node": "RFQ resolved?", "type": "main", "index": 0 }]]
+    },
+    "RFQ resolved?": {
+      "main": [
+        [{ "node": "POST /quotations/ingest", "type": "main", "index": 0 }],
+        [{ "node": "Reply: RFQ not found", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST /quotations/ingest": {
+      "main": [[{ "node": "Reply in Telegram", "type": "main", "index": 0 }]]
+    }
+  }
+}

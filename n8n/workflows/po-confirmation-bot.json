@@ -1,0 +1,147 @@
+{
+  "name": "Vendor PO Confirmation Bot",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Procurement_Implementation_Plan.md \u00a76, bullet 5: vendor replies 'confirmed' (plus the PO number) on WhatsApp/Telegram -> httpRequest -> POST /purchase-orders/{id}/confirm. Only ever calls the one endpoint - this workflow never guesses or force-transitions anything the API itself wouldn't allow (PurchaseOrderService.confirm() still enforces SENT -> CONFIRMED and rejects anything else with 409, same as if a human clicked confirm in the UI)."
+  },
+  "nodes": [
+    {
+      "id": "8482b19c-0893-4fff-9996-91126b00d41a",
+      "name": "Telegram Trigger (vendor reply)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-680, 0],
+      "parameters": { "updates": ["message"] },
+      "credentials": { "telegramApi": { "id": "telegram_vendor_bot", "name": "Vendor-Facing Bot" } }
+    },
+    {
+      "id": "51e8d72e-1d2c-4b0f-bce8-40f98272dfa8",
+      "name": "Looks like a confirmation?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-440, 0],
+      "notes": "Simple keyword + PO-number-pattern match. A real deployment might swap this for an LLM classifier node, but the shape of what happens next (one httpRequest to /confirm) doesn't change either way.",
+      "parameters": {
+        "jsCode": "const text = ($json.message.text || '').trim();\nconst confirmed = /\\bconfirm(ed)?\\b/i.test(text);\nconst poMatch = text.match(/PO-\\d{4}-\\d{5}/i);\nreturn [{ json: { ...$json, is_confirmation: confirmed && !!poMatch, po_number: poMatch ? poMatch[0].toUpperCase() : null } }];"
+      }
+    },
+    {
+      "id": "d6b0fe39-4e61-40d7-be93-7114fe1addff",
+      "name": "Is a PO confirmation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_confirmation }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "3484f495-6610-4800-96f4-d82d7c0be47b",
+      "name": "GET /purchase-orders?status=SENT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [60, -100],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL }}/purchase-orders",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "status", "value": "SENT" }] }
+      }
+    },
+    {
+      "id": "b63393fc-31d0-4442-9642-55a235772bb0",
+      "name": "Match PO number \u2192 po_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, -100],
+      "parameters": {
+        "jsCode": "const poNumber = $('Looks like a confirmation?').item.json.po_number;\nconst pos = $input.all().map(i => i.json);\nconst po = pos.find(p => p.po_number === poNumber);\nreturn [{ json: { po_number: poNumber, po_id: po ? po.id : null } }];"
+      }
+    },
+    {
+      "id": "ce92e754-2e0a-4580-9521-3fb44b9492fa",
+      "name": "PO found and still SENT?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, -100],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.po_id }}",
+              "rightValue": "",
+              "operator": { "type": "number", "operation": "exists" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b3da42a0-b5fa-41e7-8fde-5df6992f7a31",
+      "name": "POST /purchase-orders/{id}/confirm",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, -180],
+      "notes": "PurchaseOrderService.confirm() itself enforces SENT -> CONFIRMED and returns 409 for anything else - this node doesn't need its own state check, the API is the source of truth.",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/purchase-orders/{{ $json.po_id }}/confirm",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "37ea2538-8f7d-4902-92e9-c11f7a3fdeee",
+      "name": "Reply: confirmed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1020, -180],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger (vendor reply)').item.json.message.chat.id }}",
+        "text": "=Thanks - {{ $('Match PO number \u2192 po_id').item.json.po_number }} is confirmed on our side.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_vendor_bot", "name": "Vendor-Facing Bot" } }
+    },
+    {
+      "id": "5e136928-cd9d-4568-b994-b748cb39a06e",
+      "name": "Reply: PO not found/not confirmable",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 20],
+      "notes": "Also reached if the API's /confirm call above returns 409 (e.g. already confirmed, or cancelled) - the httpRequest node's error output routes here too in a full setup (onError: continueErrorOutput).",
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger (vendor reply)').item.json.message.chat.id }}",
+        "text": "=Couldn't match {{ $('Match PO number \u2192 po_id').item.json.po_number }} to an order we're waiting on confirmation for - forwarding to a purchase officer.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_vendor_bot", "name": "Vendor-Facing Bot" } }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger (vendor reply)": { "main": [[{ "node": "Looks like a confirmation?", "type": "main", "index": 0 }]] },
+    "Looks like a confirmation?": { "main": [[{ "node": "Is a PO confirmation?", "type": "main", "index": 0 }]] },
+    "Is a PO confirmation?": { "main": [[{ "node": "GET /purchase-orders?status=SENT", "type": "main", "index": 0 }], []] },
+    "GET /purchase-orders?status=SENT": { "main": [[{ "node": "Match PO number \u2192 po_id", "type": "main", "index": 0 }]] },
+    "Match PO number \u2192 po_id": { "main": [[{ "node": "PO found and still SENT?", "type": "main", "index": 0 }]] },
+    "PO found and still SENT?": {
+      "main": [
+        [{ "node": "POST /purchase-orders/{id}/confirm", "type": "main", "index": 0 }],
+        [{ "node": "Reply: PO not found/not confirmable", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST /purchase-orders/{id}/confirm": { "main": [[{ "node": "Reply: confirmed", "type": "main", "index": 0 }]] }
+  }
+}

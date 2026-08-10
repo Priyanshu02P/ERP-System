@@ -11,6 +11,9 @@ from app.services.exceptions import ConflictError, ValidationError, ReferencedEn
 
 
 class ShelfService(BaseService[Shelf]):
+    """A shelf belongs to exactly one Rack. add_bin()/remove_bin() mirror
+    the same pattern one level further down (see RackService)."""
+
     def __init__(self, db: Session):
         self.repository: ShelfRepository = ShelfRepository(db)
         self.rack_repository = RackRepository(db)

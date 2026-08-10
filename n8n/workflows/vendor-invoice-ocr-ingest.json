@@ -1,0 +1,139 @@
+{
+  "name": "Vendor Invoice OCR \u2192 Ingest",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Procurement_Implementation_Plan.md \u00a76, bullet 2: extends the existing invoice-OCR workflow by adding an httpRequest node after 'Parse Final Invoice JSON', alongside (not instead of) the existing Telegram reply, so the human still sees the OCR result in chat AND it lands in the review queue at POST /vendor-invoices/ingest."
+  },
+  "nodes": [
+    {
+      "id": "ccb2d59c-f3f4-4c6d-bcbd-a63335831e12",
+      "name": "Telegram Trigger (invoice photo/doc)",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-400, 0],
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": { "download": true }
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "cc4c6fe6-ffc0-4a4f-8c01-9bbd1d154db3",
+      "name": "Has document or photo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-160, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.document || $json.message.photo }}",
+              "rightValue": "",
+              "operator": { "type": "object", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b64bac72-9648-4564-a764-769106a7058a",
+      "name": "OCR Parse Invoice (Mistral)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, -100],
+      "notes": "Pre-existing node from before this phase - Mistral OCR document-understanding call against the downloaded Telegram file. Left as-is; only the downstream branch changed.",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f7700586-7978-469c-8690-287a2c6d3487",
+      "name": "Parse Final Invoice JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, -100],
+      "notes": "Pre-existing node - turns the OCR's raw text/markdown into the structured shape VendorInvoiceIngest expects. Left as-is.",
+      "parameters": {
+        "jsCode": "// Existing OCR-to-JSON parsing logic (unchanged by this phase).\n// Expected output shape, one item per invoice line:\n// {\n//   supplier_id, po_id, vendor_invoice_no, invoice_date,\n//   items: [{ description, quantity, rate, gst_rate, amount }]\n// }\n// supplier_id/po_id are resolved earlier in the existing workflow (not\n// shown here) from the chat's linked PO context.\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "18a09586-4055-4dcf-96d3-e11f65e07e90",
+      "name": "POST /vendor-invoices/ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [580, -180],
+      "notes": "NEW node added this phase. Runs in parallel with the existing Telegram reply below - the human still sees the OCR result in chat, and it also lands in PENDING_MATCH for review.",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/vendor-invoices/ingest",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { supplier_id: $json.supplier_id, po_id: $json.po_id, grn_id: $json.grn_id ?? null, vendor_invoice_no: $json.vendor_invoice_no, invoice_date: $json.invoice_date, source: \"OCR_BOT\", source_confidence: $json.source_confidence ?? 0.8, raw_document_url: $json.raw_document_url ?? null, items: $json.items } }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "0e6889c2-fbb0-44e0-ab1d-9c0c3a1e72ba",
+      "name": "Reply in Telegram (unchanged)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [580, 0],
+      "notes": "Pre-existing node - unchanged. The person still gets the same OCR-read confirmation they always did.",
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger (invoice photo/doc)').item.json.message.chat.id }}",
+        "text": "=Got it \u2013 read invoice {{ $json.vendor_invoice_no || '(no number found)' }} for \u20b9{{ $json.items ? $json.items.reduce((s,i)=>s+(i.amount||i.quantity*i.rate),0) : '?' }}. It's now in the review queue \u2013 a purchase officer will confirm the line items before it's matched.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "e72774d0-67db-482c-94b7-0419ec8c8d24",
+      "name": "Reply: not a document",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [80, 120],
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Please send the invoice as a photo or PDF document.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger (invoice photo/doc)": {
+      "main": [[{ "node": "Has document or photo?", "type": "main", "index": 0 }]]
+    },
+    "Has document or photo?": {
+      "main": [
+        [{ "node": "OCR Parse Invoice (Mistral)", "type": "main", "index": 0 }],
+        [{ "node": "Reply: not a document", "type": "main", "index": 0 }]
+      ]
+    },
+    "OCR Parse Invoice (Mistral)": {
+      "main": [[{ "node": "Parse Final Invoice JSON", "type": "main", "index": 0 }]]
+    },
+    "Parse Final Invoice JSON": {
+      "main": [
+        [
+          { "node": "POST /vendor-invoices/ingest", "type": "main", "index": 0 },
+          { "node": "Reply in Telegram (unchanged)", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

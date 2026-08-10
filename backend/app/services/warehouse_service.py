@@ -10,6 +10,11 @@ from app.services.exceptions import ConflictError, ReferencedEntityError
 
 
 class WarehouseService(BaseService[Warehouse]):
+    """Top of the physical storage hierarchy (Warehouse -> Rack -> Shelf ->
+    Bin -> Location). add_rack()/remove_rack() are convenience helpers that
+    keep a warehouse's child racks in sync without a separate rack-creation
+    round trip."""
+
     def __init__(self, db: Session):
         self.repository: WarehouseRepository = WarehouseRepository(db)
         self.location_repository = LocationRepository(db)

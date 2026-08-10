@@ -5,25 +5,37 @@ from sqlalchemy.orm import Session
 from app.db.models.product import Product
 from app.db.repositories.product_repository import ProductRepository
 from app.db.repositories.unit_repository import UnitRepository
+from app.db.repositories.supplier_repository import SupplierRepository
 from app.db.schemas.product import ProductCreate, ProductUpdate
 from app.services.base_service import BaseService
 from app.services.exceptions import ConflictError, ValidationError, ReferencedEntityError
 
 
 class ProductService(BaseService[Product]):
+    """Product master (RAW/WIP/FG). Carries reorder_level/reorder_quantity
+    and an optional preferred_supplier_id, which the (future) reorder-digest
+    workflow reads to decide what to raise a PurchaseRequisition for."""
+
     def __init__(self, db: Session):
         self.repository: ProductRepository = ProductRepository(db)
         self.unit_repository = UnitRepository(db)
+        self.supplier_repository = SupplierRepository(db)
         super().__init__(self.repository, entity_name="Product")
 
     def validate_product(self, unit_id: int) -> None:
         if not self.unit_repository.exists(unit_id):
             raise ValidationError(f"Unit with id={unit_id} does not exist")
 
+    def validate_preferred_supplier(self, supplier_id: int) -> None:
+        if not self.supplier_repository.exists(supplier_id):
+            raise ValidationError(f"Supplier with id={supplier_id} does not exist")
+
     def create_product(self, data: ProductCreate) -> Product:
         if self.repository.exists_product_code(data.code):
             raise ConflictError(f"Product code '{data.code}' already exists")
         self.validate_product(data.unit_id)
+        if data.preferred_supplier_id is not None:
+            self.validate_preferred_supplier(data.preferred_supplier_id)
         product = Product(**data.model_dump())
         return self.repository.create(product)
 
@@ -32,6 +44,8 @@ class ProductService(BaseService[Product]):
         payload = data.model_dump(exclude_unset=True)
         if "unit_id" in payload:
             self.validate_product(payload["unit_id"])
+        if "preferred_supplier_id" in payload and payload["preferred_supplier_id"] is not None:
+            self.validate_preferred_supplier(payload["preferred_supplier_id"])
         for field, value in payload.items():
             setattr(product, field, value)
         return self.repository.update(product)

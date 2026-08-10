@@ -15,6 +15,9 @@ class ProductBase(BaseModel):
     part_number: Optional[str] = Field(None, max_length=50)
     image_url: Optional[str] = Field(None, max_length=255)
     unit_id: int
+    reorder_level: Optional[float] = Field(None, ge=0)
+    reorder_quantity: Optional[float] = Field(None, gt=0)
+    preferred_supplier_id: Optional[int] = None
 
 
 class ProductCreate(ProductBase):
@@ -28,6 +31,9 @@ class ProductUpdate(BaseModel):
     part_number: Optional[str] = Field(None, max_length=50)
     image_url: Optional[str] = Field(None, max_length=255)
     unit_id: Optional[int] = None
+    reorder_level: Optional[float] = Field(None, ge=0)
+    reorder_quantity: Optional[float] = Field(None, gt=0)
+    preferred_supplier_id: Optional[int] = None
 
 
 class ProductRead(ORMBase, ProductBase):

@@ -1,0 +1,166 @@
+{
+  "name": "RFQ Broadcast to Suppliers",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Procurement_Implementation_Plan.md \u00a76, bullet 4. RFQService.send() already flips the RFQ to SENT and creates one RFQSupplier row per invited supplier with response_status=SENT (see LOW_LEVEL_SERVICE_ARCHITECTURE.md) - this workflow's job is to actually DELIVER that RFQ to each supplier over their channel. Polls rather than being called by the app directly, since the app has no outbound-webhook mechanism (deliberately - see HIGH_LEVEL_ARCHITECTURE.md's 'every n8n <-> app interaction is an httpRequest node' rule)."
+  },
+  "nodes": [
+    {
+      "id": "f4d14fc2-a747-4441-8759-a2ee004ced6a",
+      "name": "Every 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-700, 0],
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] } }
+    },
+    {
+      "id": "242aaa35-d182-48b2-8f1a-479bd6e92a38",
+      "name": "GET /rfqs?status=SENT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-460, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL }}/rfqs",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "status", "value": "SENT" }] }
+      }
+    },
+    {
+      "id": "728441a9-d7d4-4a69-a929-e2267e9a6ce1",
+      "name": "Split Out RFQs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-220, 0],
+      "parameters": { "fieldToSplitOut": "" }
+    },
+    {
+      "id": "81151de6-f282-40e9-9a42-8be982e0c579",
+      "name": "Split Out Suppliers on this RFQ",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [20, 0],
+      "parameters": { "fieldToSplitOut": "suppliers" }
+    },
+    {
+      "id": "4b6a01bc-a9ff-48a6-bfba-ac880b4383ab",
+      "name": "Not yet actually delivered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [260, 0],
+      "notes": "response_status stays SENT (set by RFQService.send()) until either this workflow marks it delivered (see the Set node below, using n8n's own execution data - a simple in-workflow dedupe since there's no separate 'notified' flag on RFQSupplier) or the supplier actually responds (RESPONDED, via VendorQuotationService.create_manual/ingest calling mark_responded()).",
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response_status }}",
+              "rightValue": "SENT",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.notified }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "false" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "cab68f74-140d-4b88-8baf-4bf05938c88e",
+      "name": "GET /suppliers/{id} (contact + channel)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, -100],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL }}/suppliers/{{ $json.supplier_id }}"
+      }
+    },
+    {
+      "id": "374e3a7e-7c29-491e-9994-3db7ba35ca7a",
+      "name": "Route by channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [740, -100],
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "conditions": [{ "leftValue": "={{ $json.preferred_channel }}", "rightValue": "WHATSAPP", "operator": { "type": "string", "operation": "equals" } }] }, "outputKey": "whatsapp" },
+            { "conditions": { "conditions": [{ "leftValue": "={{ $json.preferred_channel }}", "rightValue": "TELEGRAM", "operator": { "type": "string", "operation": "equals" } }] }, "outputKey": "telegram" },
+            { "conditions": { "conditions": [{ "leftValue": "={{ $json.preferred_channel }}", "rightValue": "EMAIL", "operator": { "type": "string", "operation": "equals" } }] }, "outputKey": "email" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ac8d48eb-739e-446c-9531-f5f17f0796d4",
+      "name": "Send WhatsApp RFQ",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [980, -220],
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $json.whatsapp_number }}",
+        "textBody": "=New RFQ {{ $('Split Out RFQs').item.json.rfq_number }} due {{ $('Split Out RFQs').item.json.due_date }}. Reply with your quoted rates per line, or use the supplier portal link."
+      },
+      "credentials": { "whatsAppApi": { "id": "whatsapp_procurement", "name": "Procurement WhatsApp" } }
+    },
+    {
+      "id": "0652057d-b41f-4835-b3aa-436d7e692422",
+      "name": "Send Telegram RFQ",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [980, -100],
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "=New RFQ {{ $('Split Out RFQs').item.json.rfq_number }} due {{ $('Split Out RFQs').item.json.due_date }}. Reply with your quoted rates per line, or send a photo of your price list.",
+        "additionalFields": {}
+      },
+      "credentials": { "telegramApi": { "id": "telegram_procurement_bot", "name": "Procurement Bot" } }
+    },
+    {
+      "id": "70d6ba6b-6f59-4098-9429-3f48894682bf",
+      "name": "Send Email RFQ",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [980, 20],
+      "parameters": {
+        "toEmail": "={{ $json.email }}",
+        "subject": "=RFQ {{ $('Split Out RFQs').item.json.rfq_number }}",
+        "text": "=Please quote your best rates for the attached line items by {{ $('Split Out RFQs').item.json.due_date }}."
+      },
+      "credentials": { "smtp": { "id": "procurement_smtp", "name": "Procurement SMTP" } }
+    },
+    {
+      "id": "18a045e6-8be2-42e7-a27b-cbbe79146db3",
+      "name": "Mark delivered (this execution)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1220, -100],
+      "notes": "In-workflow dedupe only - stops this same execution's later steps from re-sending. There is deliberately no PATCH endpoint that flips RFQSupplier.response_status on delivery (only mark_responded(), called when a quotation actually arrives) - see BUSINESS_DECISIONS.md \u00a76 on n8n never writing to the DB directly.",
+      "parameters": { "assignments": { "assignments": [{ "name": "notified", "type": "boolean", "value": true }] } }
+    }
+  ],
+  "connections": {
+    "Every 5 minutes": { "main": [[{ "node": "GET /rfqs?status=SENT", "type": "main", "index": 0 }]] },
+    "GET /rfqs?status=SENT": { "main": [[{ "node": "Split Out RFQs", "type": "main", "index": 0 }]] },
+    "Split Out RFQs": { "main": [[{ "node": "Split Out Suppliers on this RFQ", "type": "main", "index": 0 }]] },
+    "Split Out Suppliers on this RFQ": { "main": [[{ "node": "Not yet actually delivered?", "type": "main", "index": 0 }]] },
+    "Not yet actually delivered?": { "main": [[{ "node": "GET /suppliers/{id} (contact + channel)", "type": "main", "index": 0 }], []] },
+    "GET /suppliers/{id} (contact + channel)": { "main": [[{ "node": "Route by channel", "type": "main", "index": 0 }]] },
+    "Route by channel": {
+      "main": [
+        [{ "node": "Send WhatsApp RFQ", "type": "main", "index": 0 }],
+        [{ "node": "Send Telegram RFQ", "type": "main", "index": 0 }],
+        [{ "node": "Send Email RFQ", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp RFQ": { "main": [[{ "node": "Mark delivered (this execution)", "type": "main", "index": 0 }]] },
+    "Send Telegram RFQ": { "main": [[{ "node": "Mark delivered (this execution)", "type": "main", "index": 0 }]] },
+    "Send Email RFQ": { "main": [[{ "node": "Mark delivered (this execution)", "type": "main", "index": 0 }]] }
+  }
+}

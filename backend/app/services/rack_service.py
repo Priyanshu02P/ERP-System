@@ -11,6 +11,10 @@ from app.services.exceptions import ConflictError, ValidationError, ReferencedEn
 
 
 class RackService(BaseService[Rack]):
+    """A rack belongs to exactly one Warehouse. add_shelf()/remove_shelf()
+    mirror WarehouseService's add_rack()/remove_rack() one level down the
+    hierarchy."""
+
     def __init__(self, db: Session):
         self.repository: RackRepository = RackRepository(db)
         self.warehouse_repository = WarehouseRepository(db)

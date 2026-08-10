@@ -42,6 +42,51 @@ class TransactionAction:
     DELETE = "DELETE"              # Inventory deletion
     SEED = "SEED"                  # Initial seed execution
 
+    # Procurement - Purchase Requisition
+    PR_CREATE = "PR_CREATE"
+    PR_ITEM_ADD = "PR_ITEM_ADD"
+    PR_ITEM_REMOVE = "PR_ITEM_REMOVE"
+    PR_SUBMIT = "PR_SUBMIT"
+    PR_APPROVE = "PR_APPROVE"
+    PR_REJECT = "PR_REJECT"
+    PR_DELETE = "PR_DELETE"
+
+    # Procurement - RFQ
+    RFQ_CREATE = "RFQ_CREATE"
+    RFQ_SEND = "RFQ_SEND"
+    RFQ_CLOSE = "RFQ_CLOSE"
+
+    # Procurement - Vendor Quotation
+    QUOTATION_CREATE = "QUOTATION_CREATE"
+    QUOTATION_INGEST = "QUOTATION_INGEST"
+    QUOTATION_ITEM_UPDATE = "QUOTATION_ITEM_UPDATE"
+    QUOTATION_REVIEW = "QUOTATION_REVIEW"
+    QUOTATION_SELECT = "QUOTATION_SELECT"
+    QUOTATION_REJECT = "QUOTATION_REJECT"
+
+    # Procurement - Purchase Order
+    PO_CREATE = "PO_CREATE"
+    PO_UPDATE = "PO_UPDATE"
+    PO_SEND = "PO_SEND"
+    PO_CONFIRM = "PO_CONFIRM"
+    PO_CANCEL = "PO_CANCEL"
+
+    # Procurement - Goods Receipt Note
+    GRN_CREATE = "GRN_CREATE"
+    GRN_CLOSE = "GRN_CLOSE"
+
+    # Procurement - Quality Inspection
+    QC_INSPECT = "QC_INSPECT"
+    QC_DEVIATION_APPROVE = "QC_DEVIATION_APPROVE"
+
+    # Procurement - Vendor Invoice / 3-way match
+    INVOICE_CREATE = "INVOICE_CREATE"
+    INVOICE_INGEST = "INVOICE_INGEST"
+    INVOICE_ITEM_UPDATE = "INVOICE_ITEM_UPDATE"
+    INVOICE_MATCH = "INVOICE_MATCH"
+    INVOICE_APPROVE_PAYMENT = "INVOICE_APPROVE_PAYMENT"
+    INVOICE_MARK_PAID = "INVOICE_MARK_PAID"
+
 
 # backend/app/core/transaction_logger.py -> parents[2] == backend/
 _LOG_PATH = Path(__file__).resolve().parents[2] / "transaction.log"

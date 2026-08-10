@@ -7,7 +7,11 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.api.error_handlers import register_exception_handlers
-from app.api import unit, manufacturer, product, warehouse, inventory, search, logs
+from app.api import (
+    unit, manufacturer, supplier, product, warehouse, inventory,
+    purchase_requisition, rfq, vendor_quotation, purchase_order,
+    goods_receipt, quality_inspection, vendor_invoice, procurement_dashboard, search, logs,
+)
 from app.db.connection import Base, engine
 from app.db import models  # noqa: F401 - importing registers every model on Base.metadata
 
@@ -29,9 +33,18 @@ register_exception_handlers(app)
 
 app.include_router(unit.router, prefix=settings.api_v1_prefix)
 app.include_router(manufacturer.router, prefix=settings.api_v1_prefix)
+app.include_router(supplier.router, prefix=settings.api_v1_prefix)
 app.include_router(product.router, prefix=settings.api_v1_prefix)
 app.include_router(warehouse.router, prefix=settings.api_v1_prefix)
 app.include_router(inventory.router, prefix=settings.api_v1_prefix)
+app.include_router(purchase_requisition.router, prefix=settings.api_v1_prefix)
+app.include_router(rfq.router, prefix=settings.api_v1_prefix)
+app.include_router(vendor_quotation.router, prefix=settings.api_v1_prefix)
+app.include_router(purchase_order.router, prefix=settings.api_v1_prefix)
+app.include_router(goods_receipt.router, prefix=settings.api_v1_prefix)
+app.include_router(quality_inspection.router, prefix=settings.api_v1_prefix)
+app.include_router(vendor_invoice.router, prefix=settings.api_v1_prefix)
+app.include_router(procurement_dashboard.router, prefix=settings.api_v1_prefix)
 app.include_router(search.router, prefix=settings.api_v1_prefix)
 app.include_router(logs.router, prefix=settings.api_v1_prefix)
 

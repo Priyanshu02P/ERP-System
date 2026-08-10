@@ -10,6 +10,11 @@ from app.services.exceptions import ConflictError, ValidationError, ReferencedEn
 
 
 class BinService(BaseService[Bin]):
+    """A bin belongs to exactly one Shelf and is the lowest level of the
+    STANDARD storage hierarchy - a Location is a specific bin (or, for
+    oversized SHEET/PIPE/SCRAP categories, a rack). See LocationService for
+    how the hierarchy is validated and assembled into a Location."""
+
     def __init__(self, db: Session):
         self.repository: BinRepository = BinRepository(db)
         self.shelf_repository = ShelfRepository(db)

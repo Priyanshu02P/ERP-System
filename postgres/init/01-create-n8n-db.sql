@@ -1,0 +1,23 @@
+-- Runs once, automatically, only the first time the `pgdata` volume is
+-- initialized (see the official postgres image's docker-entrypoint-initdb.d
+-- behaviour). Gives n8n its own database for its internal workflow/execution
+-- tables, separate from `inventory_db`.
+--
+-- Why this exists: n8n was previously pointed at `inventory_db` itself
+-- (see docker-compose.yml's old n8n.environment block), which would have
+-- let n8n create its own tables (workflow_entity, execution_entity, ...)
+-- inside the application's own database - see
+-- docs/BUSINESS_DECISIONS.md for the full reasoning. n8n talks to this
+-- application exclusively over HTTP (its own httpRequest nodes against
+-- /api/v1/...), never by touching Postgres directly - giving it a
+-- separate database makes that boundary structural, not just a convention.
+--
+-- NOTE: this script only runs on a *fresh* volume. If you already have a
+-- `pgdata` volume from before this fix (n8n previously wrote its tables
+-- into inventory_db), either:
+--   docker compose down -v && docker compose up --build   (fresh start, loses existing data), or
+--   manually run `CREATE DATABASE n8n_db;` against the running postgres
+--   container and point n8n at it (n8n will initialize its own tables in
+--   the new, empty database on next start).
+CREATE DATABASE n8n_db;
+GRANT ALL PRIVILEGES ON DATABASE n8n_db TO inventory;

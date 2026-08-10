@@ -1,16 +1,17 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: inventory_postgres
+    container_name: inventory_postgres___
     restart: unless-stopped
     environment:
       POSTGRES_USER: inventory
       POSTGRES_PASSWORD: inventory
       POSTGRES_DB: inventory_db
     ports:
-      - "5432:5432"
+      - "5431:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inventory -d inventory_db"]
       interval: 5s
@@ -19,7 +20,7 @@ services:
 
   app:
     build: ./backend
-    container_name: inventory_app
+    container_name: inventory_app__
     restart: unless-stopped
     depends_on:
       postgres:
@@ -35,34 +36,48 @@ services:
       - ./frontend:/code/frontend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    container_name: n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      GENERIC_TIMEZONE: "Asia/Kolkata"
-      TZ: "Asia/Kolkata"
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
-      N8N_RUNNERS_ENABLED: "true"
-      WEBHOOK_URL: ${WEBHOOK_URL}
-      N8N_HOST: ${N8N_HOST}
-      N8N_PROTOCOL: https
-      N8N_TUNNEL_ENABLED: "true"
-      # N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: inventory_db
-      DB_POSTGRESDB_USER: inventory
-      DB_POSTGRESDB_PASSWORD: inventory
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      postgres:
-        condition: service_healthy
+  # n8n:
+  #   image: docker.n8n.io/n8nio/n8n
+  #   container_name: n8n
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5678:5678"
+  #   environment:
+  #     GENERIC_TIMEZONE: "Asia/Kolkata"
+  #     TZ: "Asia/Kolkata"
+  #     N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+  #     N8N_RUNNERS_ENABLED: "true"
+  #     # WEBHOOK_URL: ${WEBHOOK_URL}
+  #     # N8N_HOST: ${N8N_HOST}
+  #     # N8N_PROTOCOL: https
+  #     # N8N_TUNNEL_ENABLED: "true"
+  #     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+  #     N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+  #     # Its OWN database for internal workflow/execution state - see
+  #     # postgres/init/01-create-n8n-db.sql. n8n never touches inventory_db;
+  #     # every interaction with this application is an httpRequest node
+  #     # against API_BASE_URL below (see n8n/workflows/README.md).
+  #     DB_TYPE: postgresdb
+  #     DB_POSTGRESDB_HOST: postgres
+  #     DB_POSTGRESDB_PORT: 5432
+  #     DB_POSTGRESDB_DATABASE: n8n_db
+  #     DB_POSTGRESDB_USER: inventory
+  #     DB_POSTGRESDB_PASSWORD: inventory
+  #     # Read by every workflow's httpRequest nodes via {{$env.API_BASE_URL}}
+  #     # - "app" is this compose file's own service name, reachable from n8n
+  #     # on the shared compose network without going through the host's
+  #     # published 8000 port.
+  #     API_BASE_URL: http://app:8000/api/v1
+  #     # Read by n8n/workflows/reorder-digest.json. Set in a .env file
+  #     # alongside WEBHOOK_URL/N8N_HOST/N8N_ENCRYPTION_KEY below.
+  #     # PURCHASE_MANAGER_TELEGRAM_CHAT_ID: ${PURCHASE_MANAGER_TELEGRAM_CHAT_ID}
+  #   volumes:
+  #     - n8n_data:/home/node/.n8n
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     app:
+  #       condition: service_started
 
 volumes:
   pgdata:

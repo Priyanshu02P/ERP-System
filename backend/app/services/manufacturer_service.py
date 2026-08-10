@@ -10,6 +10,10 @@ from app.services.exceptions import ConflictError, ReferencedEntityError
 
 
 class ManufacturerService(BaseService[Manufacturer]):
+    """Master data for 'who actually made this batch of stock' - distinct
+    from Supplier, which records who it was procured from. See
+    Inventory.manufacturer_id and SupplierCategory for how the two connect."""
+
     def __init__(self, db: Session):
         self.repository: ManufacturerRepository = ManufacturerRepository(db)
         super().__init__(self.repository, entity_name="Manufacturer")
