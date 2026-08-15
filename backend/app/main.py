@@ -2,7 +2,6 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -49,6 +48,11 @@ app.include_router(search.router, prefix=settings.api_v1_prefix)
 app.include_router(logs.router, prefix=settings.api_v1_prefix)
 
 
+@app.get("/health", tags=["Health"])
+def health_check():
+    return {"status": "ok"}
+
+
 def _resolve_dir(candidates: list[str]) -> str | None:
     for p in candidates:
         if os.path.isdir(p):
@@ -63,27 +67,20 @@ _assets_dir = _resolve_dir([
     "/code/frontend/assets",
 ])
 if _assets_dir:
+    # Product images (e.g. /assets/products/PROD-001.png), unrelated to the
+    # React build output below.
     app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
 
-
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def serve_ui():
-    paths = [
-        "frontend/index.html",
-        "../frontend/index.html",
-        "../../frontend/index.html",
-        "/code/frontend/index.html"
-    ]
-    for p in paths:
-        if os.path.exists(p):
-            with open(p, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read())
-    return HTMLResponse(
-        content="<h1>ERP System UI</h1><p>index.html not found. Please ensure it exists in the frontend/ folder.</p>",
-        status_code=404
-    )
-
-
-@app.get("/health", tags=["Health"])
-def health_check():
-    return {"status": "ok"}
+# The React frontend (built via `npm run build` in frontend/web, see
+# frontend/web/vite.config.js) is emitted to frontend/dist. Its JS/CSS
+# bundles live under /app/ (configured via vite's build.assetsDir) so they
+# never collide with the /assets mount above. Mounting it last, with
+# html=True, means it also serves dist/index.html for "/".
+_dist_dir = _resolve_dir([
+    "frontend/dist",
+    "../frontend/dist",
+    "../../frontend/dist",
+    "/code/frontend/dist",
+])
+if _dist_dir:
+    app.mount("/", StaticFiles(directory=_dist_dir, html=True), name="frontend")

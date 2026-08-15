@@ -69,8 +69,12 @@ uvicorn app.main:app --reload
 
 ## Frontend
 
-`frontend/index.html` is a single-file dark-themed inventory control UI
-(served at `/` by the FastAPI app, static images at `/assets`):
+`frontend/web` is a React app (Vite) — a dark-themed inventory & procurement
+control UI, built to `frontend/dist` and served at `/` by the FastAPI app
+(static images at `/assets`). `docker compose up --build` builds it
+automatically; see `frontend/README.md` for the dev/build workflow.
+
+Pages:
 
 - **Dashboard** — stock-wide stats and a recent-activity feed.
 - **Inventory** — every stock record with its product image, manufacturer,
@@ -186,7 +190,8 @@ app/
 tests/                        # Pytest suite (SQLite in-memory)
 alembic/                      # Migration scaffold
 frontend/
-  index.html                  # single-file inventory UI
+  web/                         # React source (Vite) - edit here
+  dist/                        # built output, served at "/" (generated)
   assets/products/*.png       # product images
 docker-compose.yml
 Dockerfile

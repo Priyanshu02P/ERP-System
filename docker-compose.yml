@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: inventory_postgres___
+    container_name: inventory_postgres____
     restart: unless-stopped
     environment:
       POSTGRES_USER: inventory
@@ -18,13 +18,30 @@ services:
       timeout: 5s
       retries: 10
 
+  frontend-builder:
+    build: ./frontend/web
+    container_name: inventory_frontend_builder__
+    volumes:
+      # Real source lives on the host; the image's own /app is only there to
+      # get npm ci's cached node_modules layer, which the bind mount below
+      # would otherwise shadow.
+      - ./frontend/web:/app
+      - /app/node_modules
+      # vite.config.js builds to "../dist" (relative to frontend/web), i.e.
+      # /dist inside this container - mount that straight to the host path
+      # FastAPI serves, so the build lands exactly where app expects it.
+      - ./frontend/dist:/dist
+    command: npm run build
+
   app:
     build: ./backend
-    container_name: inventory_app__
+    container_name: inventory_app____
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      frontend-builder:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+psycopg2://inventory:inventory@postgres:5432/inventory_db
     ports:
