@@ -1,13 +1,13 @@
 import pytest
 
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate
-from app.db.schemas.supplier import SupplierCreate
-from app.db.models.enums import ProductType, SupplierCategory
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.supplier_service import SupplierService
-from app.services.exceptions import ConflictError, ValidationError
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate
+from app.procurement.supplier.schemas import SupplierCreate
+from app.shared.enums import ProductType, SupplierCategory
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.procurement.supplier.service import SupplierService
+from app.shared.exceptions import ConflictError, ValidationError
 
 
 def test_create_product_success(db_session):

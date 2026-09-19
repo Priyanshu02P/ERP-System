@@ -2,32 +2,32 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate, ProductUpdate
-from app.db.schemas.supplier import SupplierCreate
-from app.db.schemas.manufacturer import ManufacturerCreate
-from app.db.schemas.warehouse import WarehouseCreate, RackCreate, ShelfCreate, BinCreate, LocationCreate
-from app.db.schemas.inventory import InventoryCreate
-from app.db.schemas.purchase_requisition import PurchaseRequisitionCreate, PurchaseRequisitionItemCreate
-from app.db.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderItemCreate
-from app.db.schemas.goods_receipt import GoodsReceiptCreate, GoodsReceiptItemCreate
-from app.db.schemas.quality_inspection import QualityInspectionCreate, QualityInspectionItemCreate
-from app.db.models.enums import ProductType, SupplierCategory, InventoryStatus, QCItemDisposition
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.supplier_service import SupplierService
-from app.services.manufacturer_service import ManufacturerService
-from app.services.warehouse_service import WarehouseService
-from app.services.rack_service import RackService
-from app.services.shelf_service import ShelfService
-from app.services.bin_service import BinService
-from app.services.location_service import LocationService
-from app.services.inventory_service import InventoryService
-from app.services.purchase_requisition_service import PurchaseRequisitionService
-from app.services.purchase_order_service import PurchaseOrderService
-from app.services.goods_receipt_service import GoodsReceiptService
-from app.services.quality_inspection_service import QualityInspectionService
-from app.services.procurement_dashboard_service import ProcurementDashboardService
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate, ProductUpdate
+from app.procurement.supplier.schemas import SupplierCreate
+from app.master_data.manufacturer.schemas import ManufacturerCreate
+from app.wms.warehouse_structure.schemas import WarehouseCreate, RackCreate, ShelfCreate, BinCreate, LocationCreate
+from app.wms.inventory.schemas import InventoryCreate
+from app.procurement.requisition.schemas import PurchaseRequisitionCreate, PurchaseRequisitionItemCreate
+from app.procurement.purchase_order.schemas import PurchaseOrderCreate, PurchaseOrderItemCreate
+from app.wms.goods_receipt.schemas import GoodsReceiptCreate, GoodsReceiptItemCreate
+from app.quality.inspection.schemas import QualityInspectionCreate, QualityInspectionItemCreate
+from app.shared.enums import ProductType, SupplierCategory, InventoryStatus, QCItemDisposition
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.procurement.supplier.service import SupplierService
+from app.master_data.manufacturer.service import ManufacturerService
+from app.wms.warehouse_structure.service.warehouse_service import WarehouseService
+from app.wms.warehouse_structure.service.rack_service import RackService
+from app.wms.warehouse_structure.service.shelf_service import ShelfService
+from app.wms.warehouse_structure.service.bin_service import BinService
+from app.wms.warehouse_structure.service.location_service import LocationService
+from app.wms.inventory.service import InventoryService
+from app.procurement.requisition.service import PurchaseRequisitionService
+from app.procurement.purchase_order.service import PurchaseOrderService
+from app.wms.goods_receipt.service import GoodsReceiptService
+from app.quality.inspection.service import QualityInspectionService
+from app.procurement.dashboard.service import ProcurementDashboardService
 
 
 @pytest.fixture

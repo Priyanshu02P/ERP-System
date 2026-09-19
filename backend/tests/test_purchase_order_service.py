@@ -1,21 +1,21 @@
 import pytest
 
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate
-from app.db.schemas.supplier import SupplierCreate
-from app.db.schemas.vendor_quotation import VendorQuotationCreate, QuotationItemCreate
-from app.db.schemas.purchase_order import (
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate
+from app.procurement.supplier.schemas import SupplierCreate
+from app.procurement.vendor_quotation.schemas import VendorQuotationCreate, QuotationItemCreate
+from app.procurement.purchase_order.schemas import (
     PurchaseOrderCreate,
     PurchaseOrderItemCreate,
     PurchaseOrderUpdate,
 )
-from app.db.models.enums import ProductType, SupplierCategory, POStatus
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.supplier_service import SupplierService
-from app.services.vendor_quotation_service import VendorQuotationService
-from app.services.purchase_order_service import PurchaseOrderService
-from app.services.exceptions import ConflictError, ValidationError
+from app.shared.enums import ProductType, SupplierCategory, POStatus
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.procurement.supplier.service import SupplierService
+from app.procurement.vendor_quotation.service import VendorQuotationService
+from app.procurement.purchase_order.service import PurchaseOrderService
+from app.shared.exceptions import ConflictError, ValidationError
 
 
 @pytest.fixture

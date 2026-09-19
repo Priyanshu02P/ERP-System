@@ -1,17 +1,17 @@
 import pytest
 
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate
-from app.db.schemas.purchase_requisition import (
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate
+from app.procurement.requisition.schemas import (
     PurchaseRequisitionCreate,
     PurchaseRequisitionUpdate,
     PurchaseRequisitionItemCreate,
 )
-from app.db.models.enums import ProductType, PRStatus, PRPriority, SourceChannel
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.purchase_requisition_service import PurchaseRequisitionService
-from app.services.exceptions import ConflictError, ValidationError, NotFoundError
+from app.shared.enums import ProductType, PRStatus, PRPriority, SourceChannel
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.procurement.requisition.service import PurchaseRequisitionService
+from app.shared.exceptions import ConflictError, ValidationError, NotFoundError
 
 
 @pytest.fixture
@@ -202,16 +202,16 @@ def test_get_by_department(db_session, product):
 def test_stock_snapshot_reflects_available_inventory(db_session, product):
     from datetime import date as _date
 
-    from app.db.schemas.manufacturer import ManufacturerCreate
-    from app.db.schemas.warehouse import WarehouseCreate, RackCreate, ShelfCreate, BinCreate, LocationCreate
-    from app.db.schemas.inventory import InventoryCreate
-    from app.services.manufacturer_service import ManufacturerService
-    from app.services.warehouse_service import WarehouseService
-    from app.services.rack_service import RackService
-    from app.services.shelf_service import ShelfService
-    from app.services.bin_service import BinService
-    from app.services.location_service import LocationService
-    from app.services.inventory_service import InventoryService
+    from app.master_data.manufacturer.schemas import ManufacturerCreate
+    from app.wms.warehouse_structure.schemas import WarehouseCreate, RackCreate, ShelfCreate, BinCreate, LocationCreate
+    from app.wms.inventory.schemas import InventoryCreate
+    from app.master_data.manufacturer.service import ManufacturerService
+    from app.wms.warehouse_structure.service.warehouse_service import WarehouseService
+    from app.wms.warehouse_structure.service.rack_service import RackService
+    from app.wms.warehouse_structure.service.shelf_service import ShelfService
+    from app.wms.warehouse_structure.service.bin_service import BinService
+    from app.wms.warehouse_structure.service.location_service import LocationService
+    from app.wms.inventory.service import InventoryService
 
     manufacturer = ManufacturerService(db_session).create(ManufacturerCreate(code="MFG-1", name="Tata Steel"))
     warehouse = WarehouseService(db_session).create(WarehouseCreate(code="WH1", name="Main Warehouse"))

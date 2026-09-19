@@ -1,30 +1,37 @@
 # Inventory Management System
 
-FastAPI + SQLAlchemy + Pydantic + PostgreSQL backend, following a strict
-layered architecture:
+FastAPI + SQLAlchemy + Pydantic + PostgreSQL backend, organized **by domain first, by layer
+second** — see [`docs/HIGH_LEVEL_ARCHITECTURE.md`](docs/HIGH_LEVEL_ARCHITECTURE.md) §3 for the full
+picture. Each domain (`master_data`, `procurement`, `wms`, `quality`, `platform`) owns its own
+subdomains, and each subdomain carries the same four layers:
 
 ```
 Client → FastAPI Router → Service Layer → Repository Layer → SQLAlchemy Models → PostgreSQL
 ```
 
-| Layer | Responsibility |
-|---|---|
-| Router (`app/api`) | HTTP requests/responses |
-| Service (`app/services`) | Business rules |
-| Repository (`app/db/repositories`) | Database queries |
-| Model (`app/db/models`) | Database schema |
-| Schema (`app/db/schemas`) | Request/response validation |
+| Layer | Responsibility | Lives in |
+|---|---|---|
+| Router | HTTP requests/responses | `app/<domain>/<subdomain>/api.py` |
+| Service | Business rules | `app/<domain>/<subdomain>/service.py` |
+| Repository | Database queries | `app/<domain>/<subdomain>/repository.py` |
+| Model | Database schema | `app/<domain>/<subdomain>/models.py` |
+| Schema | Request/response validation | `app/<domain>/<subdomain>/schemas.py` |
+
+Cross-cutting kernel code (base classes, enums, exceptions, the transaction logger) lives in
+`app/shared/` and is imported by every domain rather than owned by any one of them.
 
 ## Documentation
 
-- [`docs/HIGH_LEVEL_ARCHITECTURE.md`](docs/HIGH_LEVEL_ARCHITECTURE.md) — system architecture, layering,
-  cross-cutting concerns, deployment view
-- [`docs/LOW_LEVEL_SERVICE_ARCHITECTURE.md`](docs/LOW_LEVEL_SERVICE_ARCHITECTURE.md) — every service
-  class and function, grouped by module
+- [`docs/HIGH_LEVEL_ARCHITECTURE.md`](docs/HIGH_LEVEL_ARCHITECTURE.md) — **master, system-wide** doc:
+  architecture, layering, cross-cutting concerns, deployment view
+- [`docs/API.md`](docs/API.md) — every HTTP endpoint, grouped by domain and subdomain
+- `docs/modules/<domain>/LOW_LEVEL_DESIGN.md` — **module-wise, low-level** docs, one per domain
+  (`shared`, `master_data`, `procurement`, `wms`, `quality`, `platform`) — every service class and
+  function in that domain
 - [`docs/BUSINESS_DECISIONS.md`](docs/BUSINESS_DECISIONS.md) — the reasoning behind every non-obvious
   rule in the code, organized by theme
-- [`docs/Procurement_Implementation_Plan.md`](docs/Procurement_Implementation_Plan.md) — the original
-  phase-by-phase build log and spec
+- [`docs/modules/procurement/IMPLEMENTATION_PLAN.md`](docs/modules/procurement/IMPLEMENTATION_PLAN.md)
+  — the original phase-by-phase build log and spec for the Procurement module
 - [`n8n/workflows/README.md`](n8n/workflows/README.md) — importable n8n workflows for the automation
   touchpoints (OCR ingest, RFQ broadcast, PO confirmation bot, reorder digest)
 
@@ -93,7 +100,7 @@ Pages:
 Every stock-movement action — `RECEIVE`, `ISSUE`, `MOVE`, `RESERVE`,
 `RELEASE`, `STATUS_CHANGE`, `ADJUST`, `DELETE`, `SEED` — is written as a
 single-line structured JSON entry to `backend/transaction.log`
-(`app/core/transaction_logger.py`). This is a business audit trail, kept
+(`app/shared/transaction_logger.py`). This is a business audit trail, kept
 separate from ordinary application/error logs. Read it back via
 `GET /api/v1/logs` (supports `?action=`, `?entity_id=`, `?search=`, `?limit=`).
 
@@ -164,7 +171,7 @@ pytest -v
   since a person already knows the product. AI/automation-parsed quotations
   (`POST /quotations/ingest`) always start `PENDING_REVIEW`: each line's
   free-text description is fuzzy-matched against the product master
-  (`app/services/fuzzy_match.py`, stdlib `difflib`), and any line below the
+  (`app/shared/fuzzy_match.py`, stdlib `difflib`), and any line below the
   confidence threshold is left `product_id = NULL` for a human to map via
   `PUT /quotations/{id}/items/{item_id}`. A quotation can never be
   `/select`-ed while any line is unmapped. Selecting one quotation on an

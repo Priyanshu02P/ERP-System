@@ -9,3 +9,7 @@ postman/
 cloudflared.exe
 
 indev/
+
+
+.venv/
+.pytest_cache/

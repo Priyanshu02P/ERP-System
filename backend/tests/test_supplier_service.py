@@ -1,15 +1,15 @@
 import pytest
 
-from app.db.schemas.supplier import SupplierCreate, SupplierUpdate
-from app.db.schemas.manufacturer import ManufacturerCreate
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate
-from app.db.models.enums import SupplierCategory, ProductType
-from app.services.supplier_service import SupplierService
-from app.services.manufacturer_service import ManufacturerService
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.exceptions import ConflictError, ValidationError, ReferencedEntityError
+from app.procurement.supplier.schemas import SupplierCreate, SupplierUpdate
+from app.master_data.manufacturer.schemas import ManufacturerCreate
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate
+from app.shared.enums import SupplierCategory, ProductType
+from app.procurement.supplier.service import SupplierService
+from app.master_data.manufacturer.service import ManufacturerService
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.shared.exceptions import ConflictError, ValidationError, ReferencedEntityError
 
 
 def _make_supplier(db_session, **overrides):

@@ -1,6 +1,6 @@
 # n8n Workflows
 
-Implements `docs/Procurement_Implementation_Plan.md §6`. Every workflow here follows one rule, held to
+Implements `docs/modules/procurement/IMPLEMENTATION_PLAN.md §6`. Every workflow here follows one rule, held to
 without exception: **the only shape of "database access" a workflow ever has is an `httpRequest` node
 against this application's own API.** No workflow queries Postgres directly, and (since n8n now has its
 own database — see `postgres/init/01-create-n8n-db.sql`) none of them even *could* reach the

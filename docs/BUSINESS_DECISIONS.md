@@ -1,11 +1,13 @@
 # Business Decisions
 
-> The "why" behind the rules encoded in `app/services/`. Organized by theme rather than by phase, since
-> several decisions recur across modules. For "what does the code do", see
-> [`LOW_LEVEL_SERVICE_ARCHITECTURE.md`](./LOW_LEVEL_SERVICE_ARCHITECTURE.md); for the system-wide
-> picture, see [`HIGH_LEVEL_ARCHITECTURE.md`](./HIGH_LEVEL_ARCHITECTURE.md). The original phase-by-phase
-> build log with full context lives in `Procurement_Implementation_Plan.md` (§9–§14) — this document is
-> the distilled, theme-first reference.
+> The "why" behind the rules encoded in each domain's `service.py`. Organized by theme rather than by
+> phase, since several decisions recur across modules. For "what does the code do", see the
+> [module low-level docs](./modules/) (one per domain: `master_data`, `procurement`, `wms`, `quality`,
+> `platform`, `shared`); for the system-wide picture, see
+> [`HIGH_LEVEL_ARCHITECTURE.md`](./HIGH_LEVEL_ARCHITECTURE.md). The original phase-by-phase build log
+> with full context lives in
+> [`modules/procurement/IMPLEMENTATION_PLAN.md`](./modules/procurement/IMPLEMENTATION_PLAN.md)
+> (§9–§14) — this document is the distilled, theme-first reference.
 
 ---
 
@@ -119,7 +121,7 @@ is `REVIEWED` by hitting the wrong endpoint, because the wrong endpoint requires
 - **Tolerance values are a deliberate simplification, not specified numerically anywhere in the original
   brief:** quantity and header-total within **2%**, rate within **1%**. Loose enough to absorb rounding
   and OCR noise, tight enough to catch a real discrepancy. Both live as named constants
-  (`QUANTITY_TOLERANCE_PCT`, `RATE_TOLERANCE_PCT`) at the top of `vendor_invoice_service.py`
+  (`QUANTITY_TOLERANCE_PCT`, `RATE_TOLERANCE_PCT`) at the top of `app/procurement/vendor_invoice/service.py`
   specifically so they're easy to tune (or make configurable per supplier/category) without touching
   matching logic.
 - **What's compared against what, per line:** invoice `quantity` vs. that PO line's

@@ -5,14 +5,34 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.api.error_handlers import register_exception_handlers
-from app.api import (
-    unit, manufacturer, supplier, product, warehouse, inventory,
-    purchase_requisition, rfq, vendor_quotation, purchase_order,
-    goods_receipt, quality_inspection, vendor_invoice, procurement_dashboard, search, logs,
-)
+from app.shared.error_handlers import register_exception_handlers
+
+# Each domain owns its own api module. Grouping the imports by domain here
+# mirrors the folder layout under app/ (master_data, procurement, wms, quality,
+# platform) - see docs/HIGH_LEVEL_ARCHITECTURE.md for the full domain map.
+from app.master_data.unit import api as unit_api
+from app.master_data.manufacturer import api as manufacturer_api
+from app.master_data.product import api as product_api
+
+from app.procurement.supplier import api as supplier_api
+from app.procurement.requisition import api as requisition_api
+from app.procurement.rfq import api as rfq_api
+from app.procurement.vendor_quotation import api as vendor_quotation_api
+from app.procurement.purchase_order import api as purchase_order_api
+from app.procurement.vendor_invoice import api as vendor_invoice_api
+from app.procurement.dashboard import api as procurement_dashboard_api
+
+from app.wms.warehouse_structure import api as warehouse_api
+from app.wms.inventory import api as inventory_api
+from app.wms.goods_receipt import api as goods_receipt_api
+
+from app.quality.inspection import api as quality_inspection_api
+
+from app.platform.search import api as search_api
+from app.platform.logs import api as logs_api
+
 from app.db.connection import Base, engine
-from app.db import models  # noqa: F401 - importing registers every model on Base.metadata
+from app.db import model_registry  # noqa: F401 - importing registers every model on Base.metadata
 
 
 @asynccontextmanager
@@ -30,22 +50,31 @@ app = FastAPI(title=settings.project_name, lifespan=lifespan)
 
 register_exception_handlers(app)
 
-app.include_router(unit.router, prefix=settings.api_v1_prefix)
-app.include_router(manufacturer.router, prefix=settings.api_v1_prefix)
-app.include_router(supplier.router, prefix=settings.api_v1_prefix)
-app.include_router(product.router, prefix=settings.api_v1_prefix)
-app.include_router(warehouse.router, prefix=settings.api_v1_prefix)
-app.include_router(inventory.router, prefix=settings.api_v1_prefix)
-app.include_router(purchase_requisition.router, prefix=settings.api_v1_prefix)
-app.include_router(rfq.router, prefix=settings.api_v1_prefix)
-app.include_router(vendor_quotation.router, prefix=settings.api_v1_prefix)
-app.include_router(purchase_order.router, prefix=settings.api_v1_prefix)
-app.include_router(goods_receipt.router, prefix=settings.api_v1_prefix)
-app.include_router(quality_inspection.router, prefix=settings.api_v1_prefix)
-app.include_router(vendor_invoice.router, prefix=settings.api_v1_prefix)
-app.include_router(procurement_dashboard.router, prefix=settings.api_v1_prefix)
-app.include_router(search.router, prefix=settings.api_v1_prefix)
-app.include_router(logs.router, prefix=settings.api_v1_prefix)
+# master_data
+app.include_router(unit_api.router, prefix=settings.api_v1_prefix)
+app.include_router(manufacturer_api.router, prefix=settings.api_v1_prefix)
+app.include_router(product_api.router, prefix=settings.api_v1_prefix)
+
+# procurement
+app.include_router(supplier_api.router, prefix=settings.api_v1_prefix)
+app.include_router(requisition_api.router, prefix=settings.api_v1_prefix)
+app.include_router(rfq_api.router, prefix=settings.api_v1_prefix)
+app.include_router(vendor_quotation_api.router, prefix=settings.api_v1_prefix)
+app.include_router(purchase_order_api.router, prefix=settings.api_v1_prefix)
+app.include_router(vendor_invoice_api.router, prefix=settings.api_v1_prefix)
+app.include_router(procurement_dashboard_api.router, prefix=settings.api_v1_prefix)
+
+# wms
+app.include_router(warehouse_api.router, prefix=settings.api_v1_prefix)
+app.include_router(inventory_api.router, prefix=settings.api_v1_prefix)
+app.include_router(goods_receipt_api.router, prefix=settings.api_v1_prefix)
+
+# quality
+app.include_router(quality_inspection_api.router, prefix=settings.api_v1_prefix)
+
+# platform
+app.include_router(search_api.router, prefix=settings.api_v1_prefix)
+app.include_router(logs_api.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health", tags=["Health"])

@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.connection import Base
-from app.db import models  # noqa: F401  (registers all models on Base.metadata)
+from app.db import model_registry  # noqa: F401  (registers all models on Base.metadata)
 
 
 @pytest.fixture()

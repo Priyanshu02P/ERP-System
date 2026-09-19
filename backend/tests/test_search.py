@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.connection import get_db
-from app.db.models.product import Product
-from app.db.models.inventory import Inventory
+from app.master_data.product.models import Product
+from app.wms.inventory.models import Inventory
 
 @pytest.fixture()
 def client(db_session):

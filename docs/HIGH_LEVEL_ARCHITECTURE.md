@@ -1,8 +1,15 @@
 # High-Level System Architecture
 
-> Companion docs: [`LOW_LEVEL_SERVICE_ARCHITECTURE.md`](./LOW_LEVEL_SERVICE_ARCHITECTURE.md) (every
-> service, class, and function) and [`BUSINESS_DECISIONS.md`](./BUSINESS_DECISIONS.md) (the "why"
-> behind the rules encoded in the code). This document covers the "what" and "how it fits together".
+> This is the **master high-level doc** for the whole system. For every HTTP endpoint grouped by
+> domain, see [`API.md`](./API.md). For the per-module low-level design (every class and function in a
+> given domain), see the module docs under [`modules/`](./modules/):
+> [shared kernel](./modules/shared/LOW_LEVEL_DESIGN.md),
+> [master_data](./modules/master_data/LOW_LEVEL_DESIGN.md),
+> [procurement](./modules/procurement/LOW_LEVEL_DESIGN.md), [wms](./modules/wms/LOW_LEVEL_DESIGN.md),
+> [quality](./modules/quality/LOW_LEVEL_DESIGN.md), [platform](./modules/platform/LOW_LEVEL_DESIGN.md).
+> For *why* a rule exists rather than *what* it does, see
+> [`BUSINESS_DECISIONS.md`](./BUSINESS_DECISIONS.md). This document covers the "what" and "how it fits
+> together" system-wide.
 
 ## 1. What this system is
 
@@ -22,9 +29,9 @@ stock, not a parallel system that happens to also track inventory. See §5.
 
 | Concern | Choice |
 |---|---|
-| API framework | FastAPI (Python), routers under `app/api/` |
-| ORM | SQLAlchemy 2.0 (`Mapped[...]` declarative style), models under `app/db/models/` |
-| Validation / serialization | Pydantic v2 schemas under `app/db/schemas/` |
+| API framework | FastAPI (Python), one router per subdomain — see §3 |
+| ORM | SQLAlchemy 2.0 (`Mapped[...]` declarative style), models grouped by domain — see §3 |
+| Validation / serialization | Pydantic v2 schemas grouped by domain — see §3 |
 | Database | PostgreSQL 16 in Docker; **in-memory SQLite** for the test suite (`tests/conftest.py`) |
 | Migrations | Alembic, one revision per phase, chained via `down_revision` |
 | Automation / bots | n8n (Telegram/WhatsApp/email OCR workflows), calls the API over HTTP only |
@@ -33,57 +40,83 @@ stock, not a parallel system that happens to also track inventory. See §5.
 
 ## 3. Layered architecture
 
-Every domain module (Unit, Product, Purchase Order, Vendor Invoice, ...) follows the same four-layer
-shape, top to bottom:
+The codebase is organized **by domain first, by layer second** — the opposite of a flat
+`app/{api,services,db}` split. Every business capability owns one directory containing all of its own
+layers:
+
+```
+app/
+├── shared/              kernel: base classes, enums, exceptions, transaction log (§4)
+├── db/connection.py      SQLAlchemy engine/session/Base (infra, not a domain)
+├── master_data/           product, unit, manufacturer
+├── procurement/           supplier, requisition, rfq, vendor_quotation, purchase_order,
+│                          vendor_invoice, dashboard
+├── wms/                   warehouse_structure, inventory, goods_receipt
+├── quality/                inspection
+└── platform/               search, logs, seed
+```
+
+Within each subdomain (e.g. `app/procurement/purchase_order/`), the same four-layer shape from before
+still applies top to bottom — it's just packaged together instead of scattered across parallel
+top-level folders:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  API layer            app/api/*.py                              │
-│  FastAPI routers. Thin: parse the request into a Pydantic        │
-│  schema, call exactly one service method, return its result.    │
-│  No business logic here.                                        │
+│  API layer            <domain>/<subdomain>/api.py                │
+│  FastAPI router. Thin: parse the request into a Pydantic         │
+│  schema, call exactly one service method, return its result.     │
+│  No business logic here.                                         │
 └───────────────────────────────┬─────────────────────────────────┘
-                                 │  Pydantic schemas (app/db/schemas/*.py)
+                                 │  Pydantic schemas (<domain>/<subdomain>/schemas.py)
                                  │  *Create / *Ingest / *Update / *Read
                                  ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Service layer         app/services/*.py                        │
-│  ALL business rules live here: validation, state machines,      │
-│  numbering, totals, cross-entity checks, transaction logging.   │
-│  Services call repositories, never the ORM/session directly     │
-│  (except via a repository), and call OTHER services for         │
-│  cross-module operations (e.g. QC calls InventoryService).      │
+│  Service layer         <domain>/<subdomain>/service.py           │
+│  ALL business rules live here: validation, state machines,       │
+│  numbering, totals, cross-entity checks, transaction logging.    │
+│  Services call repositories, never the ORM/session directly      │
+│  (except via a repository), and call OTHER domains' services     │
+│  for cross-module operations (e.g. Quality calls WMS's           │
+│  InventoryService).                                               │
 └───────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Repository layer      app/db/repositories/*.py                 │
-│  Plain database access only — no business rules. Generic CRUD   │
-│  comes from BaseRepository[ModelType]; each concrete repository │
-│  adds a handful of query methods (get_by_status, count_for_year,│
-│  exists, ...).                                                  │
+│  Repository layer      <domain>/<subdomain>/repository.py        │
+│  Plain database access only — no business rules. Generic CRUD    │
+│  comes from BaseRepository[ModelType] (app/shared/), each        │
+│  concrete repository adds a handful of query methods             │
+│  (get_by_status, count_for_year, exists, ...).                   │
 └───────────────────────────────┬─────────────────────────────────┘
                                  │  SQLAlchemy ORM
                                  ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Model layer            app/db/models/*.py                      │
-│  SQLAlchemy declarative models + the shared enums               │
-│  (app/db/models/enums.py). IDMixin/TimestampMixin/ActiveMixin   │
-│  provide id/created_at/updated_at/is_active for free.           │
+│  Model layer            <domain>/<subdomain>/models.py           │
+│  SQLAlchemy declarative models. IDMixin/TimestampMixin/           │
+│  ActiveMixin (app/shared/mixins.py) provide                      │
+│  id/created_at/updated_at/is_active for free. Shared enums live  │
+│  in app/shared/enums.py, imported by whichever domain needs them.│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Why this shape:** every layer has exactly one reason to change. A new validation rule touches only
-the service. A new query touches only the repository. A new field on the wire touches only the schema.
-`BaseService`/`BaseRepository` give every module `get`/`get_all`/`get_page`/`count`/`delete` for free
-(with a consistent `NotFoundError`), so a concrete service only ever writes the logic that's actually
-specific to it.
+`warehouse_structure` is the one subdomain with more than one entity (`Warehouse`/`Rack`/`Shelf`/
+`Bin`/`Location`); there, `models/`, `repository/`, and `service/` are small packages (one file per
+entity) rather than single files, since a single API/schema pair already fronts all five.
+
+`app/db/connection.py` (engine, session factory, declarative `Base`) and `app/db/model_registry.py`
+(imports every domain's models so `Base.metadata` knows about all of them, for Alembic/`create_all`)
+are the only pieces of "db-as-a-layer" left — everything else moved into its owning domain.
+
+**Why this shape:** every layer still has exactly one reason to change, but now every *domain* also has
+one place to look. A new validation rule touches only that subdomain's `service.py`. A new query
+touches only its `repository.py`. A new field on the wire touches only its `schemas.py`. Onboarding
+someone onto "how Procurement works" means pointing at one folder, not five.
 
 ## 4. Cross-cutting concerns
 
 ### 4.1 Error handling → HTTP status codes
 
-Services raise one of four typed exceptions (`app/services/exceptions.py`); `app/api/error_handlers.py`
+Services raise one of four typed exceptions (`app/shared/exceptions.py`); `app/shared/error_handlers.py`
 maps them centrally so no router has to catch anything itself:
 
 | Exception | HTTP status | Raised when |
@@ -95,11 +128,12 @@ maps them centrally so no router has to catch anything itself:
 
 ### 4.2 Transaction log
 
-`app/core/transaction_logger.py` writes one JSON line per business action to `backend/transaction.log`
+`app/shared/transaction_logger.py` writes one JSON line per business action to `backend/transaction.log`
 (`log_transaction(action, entity_type, entity_id, details)`), read back via `GET /api/v1/logs`
-(`?action=`, `?entity_id=`, `?search=`, `?limit=`). Every state-changing service method calls this — see
-`TransactionAction` for the full enum of ~40 actions across every module. This is the audit trail: who
-did what, when, to which record, without needing a separate audit table per entity.
+(`?action=`, `?entity_id=`, `?search=`, `?limit=`, exposed through `app/platform/logs/api.py`). Every
+state-changing service method calls this — see `TransactionAction` for the full enum of ~40 actions
+across every module. This is the audit trail: who did what, when, to which record, without needing a
+separate audit table per entity.
 
 ### 4.3 The review-queue pattern (human vs. automated input)
 
@@ -109,7 +143,7 @@ Two modules accept both human-entered and bot/OCR-ingested records: **Vendor Quo
 - `create_manual(...)` / `POST /<resource>` — a human already knows the mapping (product, PO line), so
   it's required up front and trusted immediately.
 - `ingest(...)` / `POST /<resource>/ingest` — the **only** entry point automation may call. Free-text
-  descriptions are fuzzy-matched (`app/services/fuzzy_match.py`, stdlib `difflib`) against the relevant
+  descriptions are fuzzy-matched (`app/shared/fuzzy_match.py`, stdlib `difflib`) against the relevant
   candidate set; anything below a confidence threshold is left unmapped (`product_id`/`po_item_id =
   NULL`) rather than guessed.
 - The record lands in a **review-queue status** (`QuotationStatus.PENDING_REVIEW`,
@@ -126,11 +160,11 @@ disposition doesn't create `Inventory` until a human calls `approve_deviation()`
 ### 4.4 State machines
 
 Nearly every procurement entity is a state machine, always modelled as a `str, enum.Enum` in
-`app/db/models/enums.py` and always enforced in the service (never trusted from client-supplied status
-values — there is no generic "set status" endpoint anywhere). See `LOW_LEVEL_SERVICE_ARCHITECTURE.md`
-for each one in detail. Several enums intentionally carry a value with **no endpoint yet** (e.g.
-`InvoiceStatus.DISPUTED`, `RFQStatus.CANCELLED`) — reserved for a phase that hasn't been built, not a
-bug.
+`app/shared/enums.py` and always enforced in the service (never trusted from client-supplied status
+values — there is no generic "set status" endpoint anywhere). See the relevant
+[module low-level doc](./modules/) for each one in detail. Several enums intentionally carry a value
+with **no endpoint yet** (e.g. `InvoiceStatus.DISPUTED`, `RFQStatus.CANCELLED`) — reserved for a phase
+that hasn't been built, not a bug.
 
 ### 4.5 Numbering
 
@@ -203,7 +237,8 @@ of what QC later decides. See `BUSINESS_DECISIONS.md §4`.
 *above* this whole chain as a pure, read-only aggregator — it queries every stage above for a live
 count/threshold check, never writes anything, and (uniquely among the services in this codebase) never
 logs a transaction, since a dashboard view isn't a business event. See
-`LOW_LEVEL_SERVICE_ARCHITECTURE.md §4` for what each KPI actually counts.
+[`modules/procurement/LOW_LEVEL_DESIGN.md`](./modules/procurement/LOW_LEVEL_DESIGN.md) for what each
+KPI actually counts.
 
 ## 6. Deployment view
 
@@ -240,28 +275,26 @@ path for evolving an existing schema afterwards; each phase of this project adde
   `_received_and_accepted_po()` in `test_vendor_invoice_service.py`) rather than one giant end-to-end
   test file.
 - Each phase's delivery was additionally verified with an ad-hoc `TestClient` walk exercising the real
-  HTTP routes end-to-end (see the write-ups in `Procurement_Implementation_Plan.md` §12–§14) — this
-  catches router/schema wiring bugs that service-level tests can't.
+  HTTP routes end-to-end (see the write-ups in
+  [`modules/procurement/IMPLEMENTATION_PLAN.md`](./modules/procurement/IMPLEMENTATION_PLAN.md) §12–§14)
+  — this catches router/schema wiring bugs that service-level tests can't.
 
 ## 8. Module map (where to find things)
 
-| Domain | Models | Service(s) | Router |
-|---|---|---|---|
-| Units | `unit.py` | `UnitService` | `unit.py` |
-| Manufacturers | `manufacturer.py` | `ManufacturerService` | `manufacturer.py` |
-| Suppliers | `supplier.py` | `SupplierService` | `supplier.py` |
-| Products | `product.py` | `ProductService` | `product.py` |
-| Warehousing | `warehouse.py`, `rack.py`, `shelf.py`, `bin.py`, `location.py` | `WarehouseService`, `RackService`, `ShelfService`, `BinService`, `LocationService` | `warehouse.py` |
-| Inventory | `inventory.py` | `InventoryService` | `inventory.py` |
-| Purchase Requisition | `purchase_requisition.py` | `PurchaseRequisitionService` | `purchase_requisition.py` |
-| RFQ | `rfq.py` | `RFQService` | `rfq.py` |
-| Vendor Quotation | `vendor_quotation.py` | `VendorQuotationService` | `vendor_quotation.py` |
-| Purchase Order | `purchase_order.py` | `PurchaseOrderService` | `purchase_order.py` |
-| Goods Receipt | `goods_receipt.py` | `GoodsReceiptService` | `goods_receipt.py` |
-| Quality Inspection | `quality_inspection.py` | `QualityInspectionService` | `quality_inspection.py` |
-| Vendor Invoice | `vendor_invoice.py` | `VendorInvoiceService` | `vendor_invoice.py` |
-| Procurement Dashboard | *(none — aggregates across the above)* | `ProcurementDashboardService` | `procurement_dashboard.py` |
-| Cross-cutting | `enums.py`, `mixins.py` | `base_service.py`, `exceptions.py`, `fuzzy_match.py`, `seed_service.py` | `search.py`, `logs.py`, `error_handlers.py` |
+The codebase is grouped by domain, then by layer within each domain — see §3 for the general shape.
+Every row below is one directory under `app/`; the low-level doc for each domain lists every class and
+function inside it.
 
-See `LOW_LEVEL_SERVICE_ARCHITECTURE.md` for what every class and function in the Service column
-actually does.
+| Domain | Subdomains | Low-level doc |
+|---|---|---|
+| `master_data` | `unit`, `manufacturer`, `product` | [modules/master_data/LOW_LEVEL_DESIGN.md](./modules/master_data/LOW_LEVEL_DESIGN.md) |
+| `procurement` | `supplier`, `requisition`, `rfq`, `vendor_quotation`, `purchase_order`, `vendor_invoice`, `dashboard` | [modules/procurement/LOW_LEVEL_DESIGN.md](./modules/procurement/LOW_LEVEL_DESIGN.md) |
+| `wms` | `warehouse_structure` (warehouse/rack/shelf/bin/location), `inventory`, `goods_receipt` | [modules/wms/LOW_LEVEL_DESIGN.md](./modules/wms/LOW_LEVEL_DESIGN.md) |
+| `quality` | `inspection` | [modules/quality/LOW_LEVEL_DESIGN.md](./modules/quality/LOW_LEVEL_DESIGN.md) |
+| `platform` | `search`, `logs`, `seed` | [modules/platform/LOW_LEVEL_DESIGN.md](./modules/platform/LOW_LEVEL_DESIGN.md) |
+| `shared` *(kernel, not a business domain)* | `enums`, `mixins`, `schemas_common`, `base_repository`, `base_service`, `exceptions`, `fuzzy_match`, `transaction_logger`, `error_handlers` | [modules/shared/LOW_LEVEL_DESIGN.md](./modules/shared/LOW_LEVEL_DESIGN.md) |
+| `db` *(infra, not a business domain)* | `connection.py` (engine/session/Base), `model_registry.py` (registers every domain's models on `Base.metadata`) | — |
+
+Each subdomain folder (e.g. `app/procurement/purchase_order/`) contains its own `models.py`,
+`schemas.py`, `repository.py`, `service.py`, and `api.py` — see the low-level doc for that domain for
+what each file actually contains.

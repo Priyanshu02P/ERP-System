@@ -1,16 +1,16 @@
 import pytest
 
-from app.db.schemas.unit import UnitCreate
-from app.db.schemas.product import ProductCreate
-from app.db.schemas.supplier import SupplierCreate
-from app.db.schemas.vendor_quotation import VendorQuotationIngest, QuotationItemIngest
-from app.db.models.enums import ProductType, SupplierCategory, QuotationStatus, SourceChannel
-from app.services.unit_service import UnitService
-from app.services.product_service import ProductService
-from app.services.supplier_service import SupplierService
-from app.services.vendor_quotation_service import VendorQuotationService
-from app.services.fuzzy_match import best_product_match, ProductMatchCandidate
-from app.services.exceptions import ValidationError
+from app.master_data.unit.schemas import UnitCreate
+from app.master_data.product.schemas import ProductCreate
+from app.procurement.supplier.schemas import SupplierCreate
+from app.procurement.vendor_quotation.schemas import VendorQuotationIngest, QuotationItemIngest
+from app.shared.enums import ProductType, SupplierCategory, QuotationStatus, SourceChannel
+from app.master_data.unit.service import UnitService
+from app.master_data.product.service import ProductService
+from app.procurement.supplier.service import SupplierService
+from app.procurement.vendor_quotation.service import VendorQuotationService
+from app.shared.fuzzy_match import best_product_match, ProductMatchCandidate
+from app.shared.exceptions import ValidationError
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ def test_review_then_correcting_unmapped_line_allows_select(db_session, supplier
 
     unmapped = [i for i in quotation.items if i.product_id is None]
     for item in unmapped:
-        from app.db.schemas.vendor_quotation import QuotationItemUpdate
+        from app.procurement.vendor_quotation.schemas import QuotationItemUpdate
         service.update_item(quotation.id, item.id, QuotationItemUpdate(product_id=hex_bolt.id))
 
     reviewed = service.review(quotation.id, "Priya Sharma")
