@@ -94,6 +94,12 @@ Pages:
 - **Products** — a searchable image gallery of the product catalog.
 - **Activity logs** — a live view over `backend/transaction.log`
   (see below), filterable by action and free-text search.
+- **Model docs** — user-facing documentation of the analytics models, grouped by
+  ERP module (WMS, Procurement, Quality, Maintenance): what each model does, how it
+  was tested, and the statistics available. Content lives in
+  `frontend/web/src/data/modelDocs.js`; every figure comes from
+  `frontend/web/src/data/modelStats.json` (extracted from the model projects' outputs,
+  not typed by hand). None of these models is connected to live ERP data yet.
 
 ## Business transaction logging
 

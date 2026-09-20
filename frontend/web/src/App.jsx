@@ -19,6 +19,7 @@ import GoodsReceipts from './pages/GoodsReceipts';
 import QualityInspections from './pages/QualityInspections';
 import VendorInvoices from './pages/VendorInvoices';
 import Suppliers from './pages/Suppliers';
+import ModelDocs from './pages/ModelDocs';
 
 function Shell() {
   const { init, loading } = useAppData();
@@ -58,6 +59,7 @@ function Shell() {
         {page === 'quality-inspections' && <QualityInspections onNavigate={navigate} navParams={navParams} />}
         {page === 'vendor-invoices' && <VendorInvoices onNavigate={navigate} navParams={navParams} />}
         {page === 'suppliers' && <Suppliers />}
+        {page === 'model-docs' && <ModelDocs onNavigate={navigate} />}
       </main>
       <ActionModal />
       <DetailModal />

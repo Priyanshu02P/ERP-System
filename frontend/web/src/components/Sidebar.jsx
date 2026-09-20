@@ -17,6 +17,10 @@ const PROCUREMENT_ITEMS = [
   { id: 'suppliers', icon: '⚑', label: 'Suppliers' },
 ];
 
+const INTELLIGENCE_ITEMS = [
+  { id: 'model-docs', icon: '✦', label: 'Model Docs' },
+];
+
 export default function Sidebar({ page, onNavigate }) {
   const NavGroup = ({ items }) => (
     <nav className="nav-menu">
@@ -48,6 +52,9 @@ export default function Sidebar({ page, onNavigate }) {
 
       <div className="nav-group-label">Procurement</div>
       <NavGroup items={PROCUREMENT_ITEMS} />
+
+      <div className="nav-group-label">Intelligence</div>
+      <NavGroup items={INTELLIGENCE_ITEMS} />
 
       <div className="sidebar-foot">
         <a className="nav-item" href="/docs" target="_blank" rel="noreferrer">

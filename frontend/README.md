@@ -47,7 +47,9 @@ images, unchanged from before.
   create form that needs a product/qty/rate table (PR, RFQ, Quotation, PO, GRN, QC)
 - `src/pages/*.jsx` — one file per sidebar page (Dashboard, Inventory, Products, Logs, Suppliers,
   Requisitions, RFQs, Quotations, PurchaseOrders, GoodsReceipts, QualityInspections, VendorInvoices,
-  ProcurementOverview)
+  ProcurementOverview, ModelDocs)
+- `src/data/modelDocs.js` + `src/data/modelStats.json` — content and statistics for the Model Docs page;
+  update the JSON when a model is re-run, never hand-edit numbers in the prose
 - `src/utils/format.js`, `src/utils/options.js` — formatting and dropdown-option helpers
 - `src/styles.css` — the original CSS, unchanged (design tokens, layout, component classes)
 

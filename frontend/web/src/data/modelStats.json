@@ -1,0 +1,872 @@
+{
+ "wms": {
+  "run": {
+   "run_id": "20260919-095409",
+   "run_date": "2026-09-19",
+   "data_through": "2025-12",
+   "n_skus": 250,
+   "train_period": "2023-01 to 2024-12",
+   "holdout_period": "2025-01 to 2025-12",
+   "currency": "PLN",
+   "champion": "PlanBlend(Pooled+GBM,w=0.4)"
+  },
+  "kpi": {
+   "year": 2025.0,
+   "plan_PLN": 9682645.85,
+   "forecast_PLN": 10239159.004431035,
+   "actual_PLN": 10415541.03,
+   "plan_var_vs_actual_%": -0.070365541059176,
+   "forecast_var_vs_actual_%": -0.0169345044161344,
+   "plan_WAPE_sku_annual": 0.1151435111188634,
+   "forecast_WAPE_sku_annual": 0.0718671878989321,
+   "plan_WAPE_sku_annual_PLNweighted": 0.1122919103896036,
+   "forecast_WAPE_sku_annual_PLNweighted": 0.0709051371597351,
+   "plan_hit_rate_10%": 0.492,
+   "forecast_hit_rate_10%": 0.82,
+   "plan_hit_rate_20%": 0.844,
+   "forecast_hit_rate_20%": 0.968,
+   "plan_underplanned_skus_%": 0.748,
+   "forecast_underforecast_skus_%": 0.584,
+   "monthly_portfolio_MAPE_plan": 0.0725352214151881,
+   "monthly_portfolio_MAPE_forecast_static": 0.0320212004301921,
+   "monthly_portfolio_MAPE_forecast_rolling": 0.0308189457321066,
+   "monthly_sku_WAPE_plan": 0.2539955170944887,
+   "monthly_sku_WAPE_forecast_static": 0.2283316929993347,
+   "monthly_sku_WAPE_forecast_rolling": 0.2287610540501114,
+   "forecast_value_added_annual_sku_WAPE_%": 0.3758468262727968
+  },
+  "segments": [
+   {
+    "segment": "ABC A",
+    "n_skus": 122,
+    "plan_wape": 0.1078,
+    "forecast_wape": 0.0706,
+    "plan_bias": -0.059,
+    "forecast_bias": -0.0261,
+    "actual_pln": 8265276.0
+   },
+   {
+    "segment": "ABC B",
+    "n_skus": 73,
+    "plan_wape": 0.1239,
+    "forecast_wape": 0.0831,
+    "plan_bias": -0.0927,
+    "forecast_bias": -0.0317,
+    "actual_pln": 1607410.0
+   },
+   {
+    "segment": "ABC C",
+    "n_skus": 55,
+    "plan_wape": 0.1317,
+    "forecast_wape": 0.0567,
+    "plan_bias": -0.1167,
+    "forecast_bias": -0.015,
+    "actual_pln": 542855.0
+   }
+  ],
+  "models": [
+   {
+    "model": "PlanBlend(Pooled+GBM,w=0.4)",
+    "wape": 0.2282,
+    "bias": -0.0235,
+    "wape_h1": 0.2288,
+    "wape_h3": 0.2277,
+    "total_cost": 950183.0,
+    "fill_rate": 0.9956,
+    "rank_cost": 2,
+    "rank_wape": 1
+   },
+   {
+    "model": "Ensemble(Pooled+GBM)",
+    "wape": 0.2309,
+    "bias": -0.0226,
+    "wape_h1": 0.2309,
+    "wape_h3": 0.2304,
+    "total_cost": 1015955.0,
+    "fill_rate": 0.9955,
+    "rank_cost": 5,
+    "rank_wape": 2
+   },
+   {
+    "model": "Pooled",
+    "wape": 0.2337,
+    "bias": -0.0242,
+    "wape_h1": 0.2326,
+    "wape_h3": 0.2342,
+    "total_cost": 1004597.0,
+    "fill_rate": 0.9954,
+    "rank_cost": 4,
+    "rank_wape": 3
+   },
+   {
+    "model": "GlobalGBM",
+    "wape": 0.2337,
+    "bias": -0.021,
+    "wape_h1": 0.2345,
+    "wape_h3": 0.2323,
+    "total_cost": 1054244.0,
+    "fill_rate": 0.9957,
+    "rank_cost": 7,
+    "rank_wape": 4
+   },
+   {
+    "model": "MovingAvg12",
+    "wape": 0.2459,
+    "bias": -0.0191,
+    "wape_h1": 0.2466,
+    "wape_h3": 0.2459,
+    "total_cost": 1037179.0,
+    "fill_rate": 0.9968,
+    "rank_cost": 6,
+    "rank_wape": 5
+   },
+   {
+    "model": "PlanPhased(bias-corrected)",
+    "wape": 0.2486,
+    "bias": -0.025,
+    "wape_h1": 0.2487,
+    "wape_h3": 0.2485,
+    "total_cost": 942658.0,
+    "fill_rate": 0.9957,
+    "rank_cost": 1,
+    "rank_wape": 6
+   },
+   {
+    "model": "FinancialPlan(flat)",
+    "wape": 0.254,
+    "bias": -0.0754,
+    "wape_h1": 0.254,
+    "wape_h3": 0.254,
+    "total_cost": 980126.0,
+    "fill_rate": 0.995,
+    "rank_cost": 3,
+    "rank_wape": 7
+   },
+   {
+    "model": "HoltWinters(ETS)",
+    "wape": 0.284,
+    "bias": -0.0077,
+    "wape_h1": 0.287,
+    "wape_h3": 0.282,
+    "total_cost": 1318081.0,
+    "fill_rate": 0.9974,
+    "rank_cost": 10,
+    "rank_wape": 8
+   },
+   {
+    "model": "SeasonalNaive12",
+    "wape": 0.2931,
+    "bias": -0.0315,
+    "wape_h1": 0.2931,
+    "wape_h3": 0.2931,
+    "total_cost": 1310094.0,
+    "fill_rate": 0.9952,
+    "rank_cost": 9,
+    "rank_wape": 9
+   },
+   {
+    "model": "MovingAvg3",
+    "wape": 0.2949,
+    "bias": -0.0046,
+    "wape_h1": 0.2801,
+    "wape_h3": 0.3006,
+    "total_cost": 1267410.0,
+    "fill_rate": 0.9981,
+    "rank_cost": 8,
+    "rank_wape": 10
+   }
+  ],
+  "strategies": [
+   {
+    "name": "S0 Current process (historical ledger replay)",
+    "total_cost": 1212210.0,
+    "vs_current": 0.0,
+    "holding": 763064.0,
+    "capital": 353149.0,
+    "expiry": 55635.0,
+    "stockout": 27888.0,
+    "ordering": 12475.0,
+    "fill_rate": 0.9989,
+    "stockout_pm": 0.007,
+    "avg_inventory": 2942908.0,
+    "orders": 499
+   },
+   {
+    "name": "S1 Financial plan + legacy safety-stock months",
+    "total_cost": 1284547.0,
+    "vs_current": 0.0597,
+    "holding": 413085.0,
+    "capital": 193535.0,
+    "expiry": 55635.0,
+    "stockout": 572942.0,
+    "ordering": 49350.0,
+    "fill_rate": 0.9762,
+    "stockout_pm": 0.0413,
+    "avg_inventory": 1612792.0,
+    "orders": 1974
+   },
+   {
+    "name": "S2 Forecast + legacy safety-stock months",
+    "total_cost": 1195567.0,
+    "vs_current": -0.0137,
+    "holding": 449954.0,
+    "capital": 210328.0,
+    "expiry": 55635.0,
+    "stockout": 429076.0,
+    "ordering": 50575.0,
+    "fill_rate": 0.9798,
+    "stockout_pm": 0.0217,
+    "avg_inventory": 1752732.0,
+    "orders": 2023
+   },
+   {
+    "name": "S3 Forecast + calibrated quantile SL=0.99 (cost-optimal)",
+    "total_cost": 950183.0,
+    "vs_current": -0.2162,
+    "holding": 517919.0,
+    "capital": 239155.0,
+    "expiry": 55635.0,
+    "stockout": 87625.0,
+    "ordering": 49850.0,
+    "fill_rate": 0.9956,
+    "stockout_pm": 0.0067,
+    "avg_inventory": 1992958.0,
+    "orders": 1994
+   },
+   {
+    "name": "S4 As S3 with (s,S) batching Q=1.5m (high-assurance, half the orders)",
+    "total_cost": 1095869.0,
+    "vs_current": -0.096,
+    "holding": 679553.0,
+    "capital": 313474.0,
+    "expiry": 55635.0,
+    "stockout": 20907.0,
+    "ordering": 26300.0,
+    "fill_rate": 0.9992,
+    "stockout_pm": 0.0017,
+    "avg_inventory": 2612283.0,
+    "orders": 1052
+   },
+   {
+    "name": "S5 Pure newsvendor service level (cost-only, no floor)",
+    "total_cost": 1020268.0,
+    "vs_current": -0.1583,
+    "holding": 439618.0,
+    "capital": 207554.0,
+    "expiry": 55635.0,
+    "stockout": 268386.0,
+    "ordering": 49075.0,
+    "fill_rate": 0.9861,
+    "stockout_pm": 0.019,
+    "avg_inventory": 1729619.0,
+    "orders": 1963
+   }
+  ],
+  "frontier": [
+   {
+    "service": 0.9,
+    "total_cost": 1230436.0,
+    "fill_rate": 0.9728,
+    "stockout_pm": 0.0403
+   },
+   {
+    "service": 0.95,
+    "total_cost": 1071368.0,
+    "fill_rate": 0.9829,
+    "stockout_pm": 0.0283
+   },
+   {
+    "service": 0.98,
+    "total_cost": 951977.0,
+    "fill_rate": 0.9921,
+    "stockout_pm": 0.0127
+   },
+   {
+    "service": 0.99,
+    "total_cost": 950183.0,
+    "fill_rate": 0.9956,
+    "stockout_pm": 0.0067
+   },
+   {
+    "service": 0.995,
+    "total_cost": 962486.0,
+    "fill_rate": 0.9975,
+    "stockout_pm": 0.005
+   },
+   {
+    "service": 0.999,
+    "total_cost": 1108835.0,
+    "fill_rate": 0.9993,
+    "stockout_pm": 0.0027
+   }
+  ],
+  "stress": [
+   {
+    "scenario": "Base",
+    "strategy": "S0 Current process",
+    "total_cost": 1212210.0,
+    "fill_rate": 0.9989,
+    "stockout_pm": 0.007
+   },
+   {
+    "scenario": "Base",
+    "strategy": "S1 Plan + legacy SS",
+    "total_cost": 1284547.0,
+    "fill_rate": 0.9762,
+    "stockout_pm": 0.0413
+   },
+   {
+    "scenario": "Base",
+    "strategy": "S3 Cost-optimal",
+    "total_cost": 950183.0,
+    "fill_rate": 0.9956,
+    "stockout_pm": 0.0067
+   },
+   {
+    "scenario": "Demand +10% all year",
+    "strategy": "S0 Current process",
+    "total_cost": 2165987.0,
+    "fill_rate": 0.9641,
+    "stockout_pm": 0.0967
+   },
+   {
+    "scenario": "Demand +10% all year",
+    "strategy": "S1 Plan + legacy SS",
+    "total_cost": 1745050.0,
+    "fill_rate": 0.9602,
+    "stockout_pm": 0.0987
+   },
+   {
+    "scenario": "Demand +10% all year",
+    "strategy": "S3 Cost-optimal",
+    "total_cost": 1007471.0,
+    "fill_rate": 0.9894,
+    "stockout_pm": 0.03
+   },
+   {
+    "scenario": "Summer surge +20% (Jun-Aug)",
+    "strategy": "S0 Current process",
+    "total_cost": 1642219.0,
+    "fill_rate": 0.9811,
+    "stockout_pm": 0.0547
+   },
+   {
+    "scenario": "Summer surge +20% (Jun-Aug)",
+    "strategy": "S1 Plan + legacy SS",
+    "total_cost": 1848304.0,
+    "fill_rate": 0.9563,
+    "stockout_pm": 0.088
+   },
+   {
+    "scenario": "Summer surge +20% (Jun-Aug)",
+    "strategy": "S3 Cost-optimal",
+    "total_cost": 1049006.0,
+    "fill_rate": 0.9897,
+    "stockout_pm": 0.027
+   },
+   {
+    "scenario": "Supplier lead time +1 month (policy unaware)",
+    "strategy": "S1 Plan + legacy SS",
+    "total_cost": 3094651.0,
+    "fill_rate": 0.9096,
+    "stockout_pm": 0.2117
+   },
+   {
+    "scenario": "Supplier lead time +1 month (policy unaware)",
+    "strategy": "S3 Cost-optimal",
+    "total_cost": 2072105.0,
+    "fill_rate": 0.9502,
+    "stockout_pm": 0.1717
+   },
+   {
+    "scenario": "Combined: +10% demand and +1 month lead time",
+    "strategy": "S1 Plan + legacy SS",
+    "total_cost": 4697786.0,
+    "fill_rate": 0.8675,
+    "stockout_pm": 0.316
+   },
+   {
+    "scenario": "Combined: +10% demand and +1 month lead time",
+    "strategy": "S3 Cost-optimal",
+    "total_cost": 3411495.0,
+    "fill_rate": 0.9128,
+    "stockout_pm": 0.2673
+   }
+  ],
+  "calibration": [
+   {
+    "nominal": 0.9,
+    "realised": 0.9179,
+    "windows": 3240
+   },
+   {
+    "nominal": 0.95,
+    "realised": 0.9497,
+    "windows": 3240
+   },
+   {
+    "nominal": 0.98,
+    "realised": 0.9778,
+    "windows": 3240
+   },
+   {
+    "nominal": 0.99,
+    "realised": 0.987,
+    "windows": 3240
+   }
+  ],
+  "monthly": [
+   {
+    "month": "2025-01",
+    "plan": 21645.0,
+    "forecast": 22637.0,
+    "forecast_rolling": 22563.0,
+    "actual": 23470.0
+   },
+   {
+    "month": "2025-02",
+    "plan": 21645.0,
+    "forecast": 22751.0,
+    "forecast_rolling": 22682.0,
+    "actual": 22980.0
+   },
+   {
+    "month": "2025-03",
+    "plan": 21645.0,
+    "forecast": 21699.0,
+    "forecast_rolling": 21666.0,
+    "actual": 21769.0
+   },
+   {
+    "month": "2025-04",
+    "plan": 21645.0,
+    "forecast": 21803.0,
+    "forecast_rolling": 21776.0,
+    "actual": 21266.0
+   },
+   {
+    "month": "2025-05",
+    "plan": 21645.0,
+    "forecast": 22545.0,
+    "forecast_rolling": 22421.0,
+    "actual": 23788.0
+   },
+   {
+    "month": "2025-06",
+    "plan": 21645.0,
+    "forecast": 24279.0,
+    "forecast_rolling": 24659.0,
+    "actual": 27160.0
+   },
+   {
+    "month": "2025-07",
+    "plan": 21645.0,
+    "forecast": 24325.0,
+    "forecast_rolling": 24804.0,
+    "actual": 24514.0
+   },
+   {
+    "month": "2025-08",
+    "plan": 21645.0,
+    "forecast": 25039.0,
+    "forecast_rolling": 25350.0,
+    "actual": 27197.0
+   },
+   {
+    "month": "2025-09",
+    "plan": 21645.0,
+    "forecast": 22620.0,
+    "forecast_rolling": 22784.0,
+    "actual": 23120.0
+   },
+   {
+    "month": "2025-10",
+    "plan": 21645.0,
+    "forecast": 21636.0,
+    "forecast_rolling": 21781.0,
+    "actual": 21985.0
+   },
+   {
+    "month": "2025-11",
+    "plan": 21645.0,
+    "forecast": 22099.0,
+    "forecast_rolling": 22215.0,
+    "actual": 21931.0
+   },
+   {
+    "month": "2025-12",
+    "plan": 21645.0,
+    "forecast": 22169.0,
+    "forecast_rolling": 22249.0,
+    "actual": 21739.0
+   }
+  ],
+  "reliability": {
+   "grades": {
+    "A": 195,
+    "C": 36,
+    "B": 19
+   },
+   "reasons": {
+    "frequent demand spikes": 38,
+    "recent level shift >25%": 31,
+    "low forecastability (1m WAPE>40%)": 30,
+    "persistent bias >10%": 15,
+    "demand history often censored by stock-outs": 1
+   }
+  },
+  "health": {
+   "months": 21,
+   "first": "2024-04",
+   "last": "2025-12",
+   "roll_wape_min": 0.2079,
+   "roll_wape_max": 0.2523,
+   "alerts": 0
+  },
+  "validation": [
+   {
+    "severity": "INFO",
+    "check": "hard_checks",
+    "detail": "schema, universe, calendar, domain, identity and parameter checks all passed",
+    "n": 0
+   },
+   {
+    "severity": "WARN",
+    "check": "censoring:zero_end_inventory",
+    "detail": "End-of-month inventory == 0 => sales capped by stock; true demand >= recorded sales (right-censored) in 182 product-months across 109 products.",
+    "n": 182
+   },
+   {
+    "severity": "WARN",
+    "check": "zero_sales",
+    "detail": "zero-sales months (stock-out, not zero demand)",
+    "n": 6
+   },
+   {
+    "severity": "INFO",
+    "check": "outliers:hampel",
+    "detail": "202 product-months beyond 3.5 robust sigmas (clipped for level estimation only)",
+    "n": 202
+   },
+   {
+    "severity": "WARN",
+    "check": "expiry_risk:cover_gt_shelf_life",
+    "detail": "product-months where stock cover exceeds shelf life",
+    "n": 39
+   },
+   {
+    "severity": "INFO",
+    "check": "replenishment:pattern",
+    "detail": "historical replenishment is lumpy: median 5 months between receipts, median receipt = 6.1 months of demand",
+    "n": 1226
+   },
+   {
+    "severity": "WARN",
+    "check": "freshness",
+    "detail": "latest data month 2025-12 is 9 months older than run date 2026-09-19: forecasts/orders describe the period AFTER 2025-12; refresh data before acting",
+    "n": 9
+   }
+  ],
+  "reorder": {
+   "as_of": "2026-01",
+   "skus_to_order": 163,
+   "n_skus": 250,
+   "order_value_pln": 1490153.0,
+   "assumes_no_open_pos": true
+  },
+  "loss_tracker": {
+   "rows": 38,
+   "stages": {
+    "tuning(inner 2024)": 16,
+    "forecast_model(2025 hold-out)": 10,
+    "inventory_strategy": 6,
+    "service_frontier": 6
+   }
+  }
+ },
+ "maintenance": {
+  "dataset": {
+   "name": "NASA C-MAPSS FD001 (turbofan engine run-to-failure simulation)",
+   "train_rows": 20631,
+   "test_rows": 13096,
+   "engines": 100,
+   "life_mean": 206.31,
+   "life_min": 128.0,
+   "life_median": 199.0,
+   "life_max": 362.0,
+   "sensors_dropped": [
+    "s_1",
+    "s_5",
+    "s_10",
+    "s_16",
+    "s_18",
+    "s_19"
+   ],
+   "n_features": 48,
+   "rul_cap": 125,
+   "fail_window": 30,
+   "roll_window": 5
+  },
+  "split": {
+   "train_rows": 16511,
+   "train_engines": 80,
+   "val_rows": 4120,
+   "val_engines": 20
+  },
+  "single_fold": {
+   "mae": 13.74,
+   "rmse": 18.58,
+   "r2": 0.801,
+   "auc": 0.987,
+   "brier": 0.045
+  },
+  "cv": {
+   "folds": [
+    {
+     "fold": 1,
+     "mae": 13.707492,
+     "rmse": 18.549931,
+     "r2": 0.801903
+    },
+    {
+     "fold": 2,
+     "mae": 14.072105,
+     "rmse": 18.886876,
+     "r2": 0.794537
+    },
+    {
+     "fold": 3,
+     "mae": 11.520395,
+     "rmse": 16.420861,
+     "r2": 0.844731
+    },
+    {
+     "fold": 4,
+     "mae": 14.556566,
+     "rmse": 20.298397,
+     "r2": 0.762753
+    },
+    {
+     "fold": 5,
+     "mae": 11.41478,
+     "rmse": 15.874422,
+     "r2": 0.854887
+    }
+   ],
+   "mae_mean": 13.05,
+   "mae_sd": 1.32,
+   "r2_mean": 0.812,
+   "r2_sd": 0.034,
+   "rmse_mean": 18.01
+  },
+  "importance_top": [
+   {
+    "feature": "s_4_rmean",
+    "importance": 0.5524
+   },
+   {
+    "feature": "s_11_rmean",
+    "importance": 0.2566
+   },
+   {
+    "feature": "s_9_rmean",
+    "importance": 0.1058
+   },
+   {
+    "feature": "s_15_rmean",
+    "importance": 0.0146
+   },
+   {
+    "feature": "s_14_rmean",
+    "importance": 0.0114
+   },
+   {
+    "feature": "s_21_rmean",
+    "importance": 0.009
+   },
+   {
+    "feature": "s_12_rmean",
+    "importance": 0.0079
+   },
+   {
+    "feature": "s_7_rmean",
+    "importance": 0.0065
+   },
+   {
+    "feature": "s_3_rmean",
+    "importance": 0.0045
+   },
+   {
+    "feature": "s_2_rmean",
+    "importance": 0.0042
+   }
+  ],
+  "lead_time": {
+   "alarmed": 24,
+   "of": 100,
+   "mean": 38.208333,
+   "min": 19.0,
+   "median": 32.5,
+   "max": 94.0,
+   "threshold": 0.5
+  },
+  "confidence_rows": {
+   "HIGH": 2977,
+   "MEDIUM": 1093,
+   "LOW": 50
+  },
+  "model": {
+   "regressor": "Random Forest, 150 trees, depth 8",
+   "classifier": "Random Forest, 150 trees, depth 8, balanced classes"
+  }
+ },
+ "quality": {
+  "dataset": {
+   "name": "Welding Defect Object Detection (Kaggle, YOLO format, 640x640)",
+   "splits": {
+    "test": {
+     "bad": 67,
+     "defect": 66,
+     "good": 76,
+     "images": 74
+    },
+    "train": {
+     "bad": 736,
+     "defect": 1298,
+     "good": 1111,
+     "images": 839
+    },
+    "valid": {
+     "bad": 127,
+     "defect": 193,
+     "good": 253,
+     "images": 176
+    }
+   },
+   "notok_prevalence": {
+    "test": {
+     "notok": 45,
+     "images": 74,
+     "share": 0.608
+    },
+    "train": {
+     "notok": 630,
+     "images": 839,
+     "share": 0.751
+    },
+    "valid": {
+     "notok": 104,
+     "images": 176,
+     "share": 0.591
+    }
+   },
+   "boxes_per_image": {
+    "train": {
+     "1": 221,
+     "2": 166,
+     "3-6": 329,
+     "7-10": 89,
+     "10+": 34
+    },
+    "valid": {
+     "1": 59,
+     "2": 27,
+     "3-6": 71,
+     "7-10": 15,
+     "10+": 4
+    },
+    "test": {
+     "1": 34,
+     "2": 15,
+     "3-6": 18,
+     "7-10": 5,
+     "10+": 2
+    }
+   },
+   "leak_images_removed": 1,
+   "source_videos": 6,
+   "video_frames_span_all_splits": true,
+   "train_copies_per_original_mean": 1.55,
+   "train_copies_per_original_max": 6
+  },
+  "conditions": {
+   "max_boxes_train": 6,
+   "area_thr": 0.004,
+   "table": {
+    "raw": {
+     "train": {
+      "images": 838,
+      "boxes": 3120,
+      "bad": 736,
+      "good": 1111,
+      "defect": 1273,
+      "imbalance": 1.73
+     },
+     "valid": {
+      "images": 176,
+      "boxes": 573,
+      "bad": 127,
+      "good": 253,
+      "defect": 193,
+      "imbalance": 1.99
+     },
+     "test": {
+      "images": 74,
+      "boxes": 209,
+      "bad": 67,
+      "good": 76,
+      "defect": 66,
+      "imbalance": 1.15
+     }
+    },
+    "filt": {
+     "train": {
+      "images": 715,
+      "boxes": 1918,
+      "bad": 442,
+      "good": 677,
+      "defect": 799,
+      "imbalance": 1.81
+     },
+     "valid": {
+      "images": 156,
+      "boxes": 377,
+      "bad": 89,
+      "good": 168,
+      "defect": 120,
+      "imbalance": 1.89
+     },
+     "test": {
+      "images": 66,
+      "boxes": 133,
+      "bad": 42,
+      "good": 55,
+      "defect": 36,
+      "imbalance": 1.53
+     }
+    }
+   },
+   "cond1_images_removed": 122,
+   "cond2_boxes_removed": 28,
+   "train_images_after": 715,
+   "train_images_before": 838
+  },
+  "imbalance": {
+   "raw": 1.73,
+   "filtered": 1.81,
+   "threshold": 1.5,
+   "focal_used": true
+  }
+ },
+ "procurement": {
+  "executed": false,
+  "outputs_per_notebook": {
+   "01_lead_time_and_delay": 0,
+   "02_defect_rate": 0,
+   "03_compliance_breach": 0,
+   "04_price_anomaly_detection": 0,
+   "05_spend_forecast": 0,
+   "06_supplier_risk_score": 0
+  }
+ }
+}
